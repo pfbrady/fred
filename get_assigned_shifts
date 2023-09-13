@@ -6,7 +6,6 @@ import time
 
 def run():
     while True:
-
         today = datetime.date.today()
         end_date = today + datetime.timedelta(days=14) #2 weeks from now.
 

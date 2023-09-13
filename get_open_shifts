@@ -4,7 +4,6 @@ import datetime
 
 
 def run():
-
     today = datetime.date.today()
     tomorrow = today + datetime.timedelta(days=1) #next day.
     end_date = today + datetime.timedelta(days=14) #2 weeks from now.
@@ -23,4 +22,3 @@ def run():
 
 if __name__ == "__open_shifts__":
     run()
-
