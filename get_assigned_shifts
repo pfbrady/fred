@@ -24,3 +24,6 @@ def run():
         print("----------------------------Sleeping for 5 seconds...----------------------------")
         
         time.sleep(5)
+
+if __name__ == "__get_assigned_shifts__":
+    run()
