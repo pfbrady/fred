@@ -11,6 +11,8 @@ def run():
 
     bot = commands.Bot(command_prefix="!", intents=intents)
 
+    # stuff
+    
     @bot.event
     async def on_ready():
         print(bot.user)
