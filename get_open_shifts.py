@@ -15,6 +15,7 @@ def open_shifts():
     
     req_json = req.json() 
     #print(req_json['DailyPositionTotals'])
+    
     lifeguard_data = [item for item in req_json['DailyPositionTotals'] if item.get('POSITION_NAME', '').lower().find('lifeguard') != -1]
     aquatic_lead_data = [item for item in req_json['DailyPositionTotals'] if item.get('POSITION_NAME', '').lower().find('lead') != -1]
     swim_instr_data = [item for item in req_json['DailyPositionTotals'] if item.get('POSITION_NAME', '').lower().find('swim') != -1]

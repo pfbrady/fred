@@ -39,19 +39,8 @@ def run():
         print(bot.user)
         await send_unassigned_shifts()
 
+    bot.run(settings.DISCORD_TOKEN)
 
-        bot = commands.Bot(command_prefix="!", intents=intents)
-
-        @bot.event
-        async def on_ready():
-            print(bot.user)
-            for guild in bot.guilds:
-                for channel in guild.text_channels:
-                    if channel.name == 'test':
-                        await channel.send("Yo, I'm your future bot. Call me Fred :)")
-
-
-        #bot.run(settings.DISCORD_TOKEN)
 
 
 
