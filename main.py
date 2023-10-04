@@ -1,5 +1,6 @@
 import settings
 import discord
+import logging
 import requests
 from discord.ext import commands
 import get_open_shifts as gos
@@ -12,7 +13,7 @@ current_time = datetime.datetime.now(est)
 
 intents = discord.Intents.default()
 intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+client = commands.Bot(command_prefix="!", intents=intents)
 
 
 async def send_unassigned_shifts():
@@ -21,7 +22,7 @@ async def send_unassigned_shifts():
     lifeguard_unassigned_shifts, aquatic_lead_unassigned_shifts, swim_instr_unassigned_shifts, swam_unassigned_shifts = shifts_as_int
         
     if current_time.hour == 13 and current_time.minute == 41:
-        for guild in bot.guilds:
+        for guild in client.guilds:
             for channel in guild.text_channels:
                 if channel.name == 'test' and lifeguard_unassigned_shifts != 0:
                     await channel.send(f"Hi, there are ({lifeguard_unassigned_shifts}) unassigned Lifeguard shifts tomorrow.")
@@ -34,12 +35,14 @@ async def send_unassigned_shifts():
 
 
 def run():
-    @bot.event
+    @client.event
     async def on_ready():
-        print(bot.user)
-        await send_unassigned_shifts()
+        print(client.user)
+        # await send_unassigned_shifts()
 
-    bot.run(settings.DISCORD_TOKEN)
+    handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+
+    client.run(token=settings.DISCORD_TOKEN, log_handler=handler)
 
 
 
