@@ -1,5 +1,7 @@
 import settings
 import discord
+import logging
+import requests
 from discord.ext import commands
 import get_open_shifts as gos
 import pytz
@@ -19,7 +21,7 @@ async def send_unassigned_shifts():
     shifts_as_int = [int(shift) for shift in shifts_tuple]
     lifeguard_unassigned_shifts, aquatic_lead_unassigned_shifts, swim_instr_unassigned_shifts, swam_unassigned_shifts = shifts_as_int
         
-    if current_time.hour == 15 and current_time.minute == 0:
+    if current_time.hour == 13 and current_time.minute == 41:
         for guild in client.guilds:
             for channel in guild.text_channels:
                 if channel.name == 'test' and lifeguard_unassigned_shifts != 0:
@@ -46,6 +48,17 @@ class Fred:
         while True:
             await self.tasks()
             await asyncio.sleep(3600)
+def run():
+    @client.event
+    async def on_ready():
+        print(client.user)
+        # await send_unassigned_shifts()
+
+    handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+
+    client.run(token=settings.DISCORD_TOKEN, log_handler=handler)
+
+
 
 
 if __name__ == "__main__":
