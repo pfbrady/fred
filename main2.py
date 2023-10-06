@@ -6,10 +6,10 @@ import database
 
 def run():
     handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-    intents=discord.Intents.default()
-    intents.members = True
-    client = fred.Fred(intents=intents)
-    client.database = database.YMCADatabase()
+    intents=discord.Intents.all()
+    intents.presences = False
+    client = fred.Fred(command_prefix='!', intents=intents)
+    #client.database = database.YMCADatabase()
     client.run(token=settings.DISCORD_TOKEN, log_handler=handler)
 
 
