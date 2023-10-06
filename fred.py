@@ -1,10 +1,12 @@
 import settings
 import discord
+from discord.ext import commands, tasks
 import logging
 import asyncio
+import cogs.fred_tasks as ft
 
 
-class Fred(discord.Client):
+class Fred(commands.Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
     
@@ -15,6 +17,7 @@ class Fred(discord.Client):
         pass
 
     async def on_ready(self):
+        await ft.setup(self)
         for user in self.users:
             print(f"User ID: {user.id}, Name: {user.name}, Display: {user.display_name}")
         print(f'Logged in as {self.user} (ID: {self.user.id})')
