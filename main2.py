@@ -9,7 +9,6 @@ def run():
     intents=discord.Intents.all()
     intents.presences = False
     client = fred.Fred(command_prefix='!', intents=intents)
-    #client.database = database.YMCADatabase()
     client.run(token=settings.DISCORD_TOKEN, log_handler=handler)
 
 

@@ -36,7 +36,7 @@ class Tasks(commands.Cog):
         current_time = datetime.datetime.now(pytz.timezone('US/Eastern'))
         print(current_time.hour)
 
-        if current_time.hour == 13:
+        if current_time.hour == 14:
             for guild in self.Fred.guilds:
                 for channel in guild.text_channels:
                     if channel.name == 'test' and lifeguard_unassigned_shifts != 0:

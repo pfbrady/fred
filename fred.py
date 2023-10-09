@@ -4,6 +4,7 @@ from discord.ext import commands, tasks
 import logging
 import asyncio
 import cogs.fred_tasks as ft
+import database as db
 
 
 class Fred(commands.Bot):
@@ -13,12 +14,11 @@ class Fred(commands.Bot):
         self.database = None
 
     async def setup_hook(self) -> None:
-        # create the background task and run it in the background
-        pass
+        # pass
+        self.database = db.YMCADatabase()
 
     async def on_ready(self):
         await ft.setup(self)
-        for user in self.users:
-            print(f"User ID: {user.id}, Name: {user.name}, Display: {user.display_name}")
+        self.database.init_discord_users(self.get_all_members())
         print(f'Logged in as {self.user} (ID: {self.user.id})')
         print('------')
