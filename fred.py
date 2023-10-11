@@ -1,24 +1,25 @@
 import settings
-import discord
-from discord.ext import commands, tasks
+from discord.ext.commands import Bot
 import logging
 import asyncio
-import cogs.fred_tasks as ft
+import cogs.tasks2.fred_tasks
+import cogs.commands2.supervisor.w2w_get_commands as w2w
+import database as db
 
 
-class Fred(commands.Bot):
+class Fred(Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
     
         self.database = None
 
     async def setup_hook(self) -> None:
-        # create the background task and run it in the background
-        pass
+        # pass
+        self.database = db.YMCADatabase()
 
     async def on_ready(self):
-        await ft.setup(self)
-        for user in self.users:
-            print(f"User ID: {user.id}, Name: {user.name}, Display: {user.display_name}")
+        await cogs.tasks2.fred_tasks.setup(self)
+        await w2w.setup(self)
+        self.database.init_discord_users(self.get_all_members())
         print(f'Logged in as {self.user} (ID: {self.user.id})')
         print('------')
