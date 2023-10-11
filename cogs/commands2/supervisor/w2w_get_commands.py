@@ -17,7 +17,7 @@ class W2W_Get_Commands(commands.Cog):
         today = datetime.date.today()
         tomorrow = today + datetime.timedelta(days=1) #next day.
         tomorrow = tomorrow.strftime("%m/%d/%Y")
-        tomorrow_staff = get_assigned_shifts(tomorrow)
+        #tomorrow_staff = get_assigned_shifts(tomorrow)
         await ctx.send(f"Here is a list of all of the employees working tomorrow:")
 
     # @commands.command()
