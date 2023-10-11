@@ -1,0 +1,1 @@
+from .fred_tasks import *
