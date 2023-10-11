@@ -10,7 +10,6 @@ from difflib import SequenceMatcher
 class YMCADatabase(object):
 
     connection = None
-    connection = None
 
     def __init__(self):
         if YMCADatabase.connection is None:
