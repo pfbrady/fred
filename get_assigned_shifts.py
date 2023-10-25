@@ -7,13 +7,16 @@ import time
 def run():
     while True:
         today = datetime.date.today()
-        end_date = today + datetime.timedelta(days=14) #2 weeks from now.
+        tomorrow = today + datetime.timedelta(days=1) #next day.
+        tomorrow = tomorrow.strftime("%m/%d/%Y")
 
         today = today.strftime("%m/%d/%Y")
         end_date = end_date.strftime("%m/%d/%Y")
 
         req = requests.get('https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date=' + 
                         today + '&end_date=' + end_date + '&key=' + settings.W2W_TOKEN)
+
+
                             
         req_json = req.json() 
         print (req_json['AssignedShiftList'])

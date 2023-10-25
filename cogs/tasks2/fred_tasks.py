@@ -3,6 +3,8 @@ from discord.ext import commands, tasks
 import get_open_shifts as gos
 import datetime
 import pytz
+from w2w import get_assigned_shifts
+
 
 from itertools import cycle
 
@@ -51,6 +53,12 @@ class Tasks(commands.Cog):
     async def ping(self, context):
         print("pong?")
         await context.send("Pong!")
+
+    @commands.command()
+    async def shifts(self, context, start_date=None, end_date=None, role=None):
+        print("shifts?")
+        shifts_info = get_assigned_shifts(start_date, end_date, role)
+        await context.send(shifts_info)
 
 async def setup(Fred):
     await Fred.add_cog(Tasks(Fred))
