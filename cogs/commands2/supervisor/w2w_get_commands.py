@@ -22,4 +22,4 @@ class W2W_Get_Commands(discord.app_commands.Group):
     #     await ctx.send()
 
 async def setup(Fred):
-    await Fred.tree.add_command(W2W_Get_Commands(name="w2w-get-commands"))
+    Fred.tree.add_command(W2W_Get_Commands(name="w2w"))
