@@ -19,6 +19,7 @@ class Fred(Bot):
 
     async def on_ready(self):
         await cogs.tasks2.fred_tasks.setup(self)
+        await self.load_extension("cogs.commands2.supervisor")
         await w2w.setup(self)
         self.database.init_discord_users(self.get_all_members())
         print(f'Logged in as {self.user} (ID: {self.user.id})')
