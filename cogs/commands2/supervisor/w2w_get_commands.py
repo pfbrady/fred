@@ -10,12 +10,12 @@ class W2W_Get_Commands(discord.app_commands.Group):
         await interaction.response.send_message(f'hrloo')
 
     @discord.app_commands.command(description="Test2")
-    async def test2(self, interaction:discord.Integration):
+    async def test2(self, interaction:discord.Interaction):
         today = datetime.date.today()
         tomorrow = today + datetime.timedelta(days=1) #next day.
         tomorrow = tomorrow.strftime("%m/%d/%Y")
         #tomorrow_staff = get_assigned_shifts(tomorrow)
-        await interaction.response.sendmessage(f"Here is a list of all of the employees working tomorrow:")
+        await interaction.response.send_message(f"Here is a list of all of the employees working tomorrow:")
 
         # @commands.command()
         # async def everyone_tomorrow(self, ctx):

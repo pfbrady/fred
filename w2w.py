@@ -15,7 +15,8 @@ def get_assigned_shifts(start_date, end_date=None, roles=None):
 
     api_url = f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN}'
     req_json = requests.get(api_url).json()
-    return req_json['AssignedShiftList']
+    [for i in req_json['AssignedShiftList'] ]
+    return req_json['AssignedShiftList'][0]
 
 
 print(get_assigned_shifts('tomorrow'))
