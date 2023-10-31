@@ -75,9 +75,11 @@ class YMCADatabase(object):
                     COMMIT;
                 """)
             except sqlite3.IntegrityError:
-                logging.warning(f"W2W Employee {employee['FIRST_NAME']} {employee['LAST_NAME']} (ID: {employee['W2W_EMPLOYEE_ID']}) already in table 'w2w_users'")
+                pass
+                #logging.warning(f"W2W Employee {employee['FIRST_NAME']} {employee['LAST_NAME']} (ID: {employee['W2W_EMPLOYEE_ID']}) already in table 'w2w_users'")
             else:
-                logging.log(msg=f"W2W Employee {employee['FIRST_NAME']} {employee['LAST_NAME']} (ID: {employee['W2W_EMPLOYEE_ID']}) inserted into table 'w2w.users'", level=logging.INFO)
+                pass
+                #logging.log(msg=f"W2W Employee {employee['FIRST_NAME']} {employee['LAST_NAME']} (ID: {employee['W2W_EMPLOYEE_ID']}) inserted into table 'w2w.users'", level=logging.INFO)
     
     def init_discord_users(self, users: List) -> None:
         cursor = self.connection.cursor()
@@ -98,9 +100,27 @@ class YMCADatabase(object):
                     COMMIT;
                 """)
             except sqlite3.IntegrityError:
-                logging.warning(f"Discord User {user.display_name} (ID: {user.id}) already in table 'discord_users'")
+                pass
+                #logging.warning(f"Discord User {user.display_name} (ID: {user.id}) already in table 'discord_users'")
             else:
-                logging.log(msg=f"Discord User {user.display_name} (ID: {user.id}) inserted into table 'discord.users'", level=logging.INFO)
+                pass
+                #logging.log(msg=f"Discord User {user.display_name} (ID: {user.id}) inserted into table 'discord.users'", level=logging.INFO)
+
+    def select_w2w_users(self, users: List):
+        cursor = self.connection.cursor()
+        try:
+            print("before query")
+            cursor.execute(f"""
+                SELECT id FROM discord_users
+                WHERE w2w_id IN ({','.join(str(id) for id in users)})
+            """)
+        except Exception as e:
+            print(e)
+        else:
+            selected_users = []
+            for user in cursor.fetchall():
+                selected_users.append(user[0])
+            return selected_users
 
 
     def handle_emails(self, emails: str) -> str:
@@ -144,3 +164,5 @@ class YMCADatabase(object):
 
 # if __name__ == "__main__":
 #     run()
+# a = YMCADatabase()
+# print(a.select_w2w_users([731933785, 568705929, 757270967, 564685546]))

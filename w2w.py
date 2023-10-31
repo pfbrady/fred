@@ -47,47 +47,44 @@ class W2WShift():
 class W2WPosition(Enum):
     SWAM = 728636793
     SWIM_INSTRUCTOR_WESTERN = 442123622
+    INSTRUCTORS = [728636793, 442123622]
 
     LIFEGUARD_COMPLEX = 342888572
     LIFEGUARD_MAIN_BUILDING = 342888573
-
     AQUATIC_SUPERVISOR = 342888570
     AQUATIC_SPECIALIST = 758159249
+    GUARDS = [342888572, 342888573, 342888570, 758159249]
 
+def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None, positions: [W2WPosition] = None):
+    # Handle date parameters: If only one date passed, sets times equal
+    start_date = dt_start.strftime("%m/%d/%Y")
+    if dt_end:
+        end_date = dt_end.strftime("%m/%d/%Y")
+    else:
+        end_date = start_date
+        dt_end = dt_start
 
-def get_assigned_shifts(date, roles=None):
-    pass
+    # GET request to W2W API
+    req_json = requests.get(f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN}').json()
+    
+    # Handle position parameter. If nothing passes in, defaults to all postions.
+    if not positions:
+        positions = []
+        for position in W2WPosition:
+            if isinstance(position.value, int):
+                positions.append(position.value)
 
-def get_assigned_shifts(start_date, end_date=None, roles=None):
-    today = datetime.date.today().strftime("%m/%d/%Y")
-    tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%m/%d/%Y")  # Next day
-
-    start_date = tomorrow if start_date == 'tomorrow' else today if start_date == 'today' else start_date
-    end_date = start_date if end_date in [None, 'today'] else tomorrow if end_date == 'tomorrow' else end_date
-
-    api_url = f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN}'
-    req_json = requests.get(api_url).json()
-    return req_json['AssignedShiftList']
-
-def get_guards(dt: datetime.datetime, location: W2WPosition = None):
-    day = dt.strftime("%m/%d/%Y")
-    req_json = requests.get(f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={day}&end_date={day}&key={settings.W2W_TOKEN}').json()
+    # Selects guards with shifts that overlap with the indicated date and time
     guards = []
     for shift in req_json['AssignedShiftList']:
         w2w_shift = W2WShift(shift)
-        if w2w_shift.start_datetime < dt and w2w_shift.end_datetime > dt and (w2w_shift.position_id == W2WPosition.LIFEGUARD_COMPLEX.value or w2w_shift.position_id == W2WPosition.LIFEGUARD_MAIN_BUILDING.value):
+        if w2w_shift.start_datetime < dt_end and w2w_shift.end_datetime > dt_start and w2w_shift.position_id in positions and w2w_shift.position_id not in guards:
             guards.append(w2w_shift.employee_id)
     return guards
 
-def get_guards_now(location: W2WPosition = None):
-    today = datetime.date.today().strftime("%m/%d/%Y")
-    req_json = requests.get(f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={today}&end_date={today}&key={settings.W2W_TOKEN}').json()
-    guards = []
-    for shift in req_json['AssignedShiftList']:
-        w2w_shift = W2WShift(shift)
-        if w2w_shift.start_datetime < datetime.datetime.now() and w2w_shift.end_datetime > datetime.datetime.now() and (w2w_shift.position_id == W2WPosition.LIFEGUARD_COMPLEX.value or w2w_shift.position_id == W2WPosition.LIFEGUARD_MAIN_BUILDING.value):
-            guards.append(w2w_shift.employee_id)
-    return guards
+def get_employees_now(positions: [W2WPosition] = None):
+    return get_employees(datetime.datetime.now(), positions)
 
-
-print(get_guards(datetime.datetime(2023, 10, 30, 12, 0)))
+print(get_employees(datetime.datetime(2023, 10, 30, 12, 0), datetime.datetime(2023, 10, 30, 13, 0)))
+print(get_employees(datetime.datetime(2023, 10, 30, 12, 0)))
+print(get_employees_now())
