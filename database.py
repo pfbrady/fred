@@ -106,7 +106,7 @@ class YMCADatabase(object):
                 pass
                 #logging.log(msg=f"Discord User {user.display_name} (ID: {user.id}) inserted into table 'discord.users'", level=logging.INFO)
 
-    def select_w2w_users(self, users: List):
+    def select_discord_users(self, users: List):
         cursor = self.connection.cursor()
         try:
             print("before query")
@@ -165,4 +165,4 @@ class YMCADatabase(object):
 # if __name__ == "__main__":
 #     run()
 # a = YMCADatabase()
-# print(a.select_w2w_users([731933785, 568705929, 757270967, 564685546]))
+# print(a.select_discord_users([731933785, 568705929, 757270967, 564685546]))

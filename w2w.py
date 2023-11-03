@@ -75,15 +75,15 @@ def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None,
                 positions.append(position.value)
 
     # Selects guards with shifts that overlap with the indicated date and time
-    guards = []
+    selected_employees = []
     for shift in req_json['AssignedShiftList']:
         w2w_shift = W2WShift(shift)
-        if w2w_shift.start_datetime < dt_end and w2w_shift.end_datetime > dt_start and w2w_shift.position_id in positions and w2w_shift.position_id not in guards:
-            guards.append(w2w_shift.employee_id)
-    return guards
+        if w2w_shift.start_datetime < dt_end and w2w_shift.end_datetime > dt_start and w2w_shift.position_id in positions and w2w_shift.position_id not in selected_employees:
+            selected_employees.append(w2w_shift.employee_id)
+    return selected_employees
 
 def get_employees_now(positions: [W2WPosition] = None):
-    return get_employees(datetime.datetime.now(), positions)
+    return get_employees(datetime.datetime.now(), positions=positions)
 
 print(get_employees(datetime.datetime(2023, 10, 30, 12, 0), datetime.datetime(2023, 10, 30, 13, 0)))
 print(get_employees(datetime.datetime(2023, 10, 30, 12, 0)))
