@@ -26,14 +26,14 @@ class W2W_Get_Commands(discord.app_commands.Group):
     @discord.app_commands.command(description="guards")
     @discord.app_commands.describe(time="The time group which you intend to send a message to. Options are listed above.")
     @discord.app_commands.autocomplete(time=guards_autocompletion)
-    async def guards(self, interaction:discord.Interaction, time: str ,message: str):
-        now_staff = w2w.get_employees_now(w2w.W2WPosition.GUARDS.value)
-        employees = self.fred.database.select_discord_users(now_staff)
+    async def guards(self, interaction:discord.Interaction, time: str, message: str):
+        users = self.emps_from_default_time(time, w2w.W2WPosition.GUARDS.value)
+        employees = self.fred.database.select_discord_users(users)
         employees_formatted = [f'<@{id}>' for id in employees]
         print(time)
         await interaction.response.send_message(f"ATTENTION {' '.join(employees_formatted)}: {message}.")
     
-    def dt_from_default_time(default_time: str, positions: [w2w.W2WPosition] = None):
+    def emps_from_default_time(self, default_time: str, positions: [w2w.W2WPosition] = None):
         now = datetime.datetime.now()
         if default_time == 'now':
             return w2w.get_employees_now(positions)
@@ -68,9 +68,9 @@ class W2W_Get_Commands(discord.app_commands.Group):
         ]
 
     @discord.app_commands.describe(time="The time group which you intend to send a message to. Options are listed above.")
-    @discord.app_commands.autocomplete(time=guards_autocompletion) 
+    @discord.app_commands.autocomplete(time=instructors_autocompletion) 
     @discord.app_commands.command(description="instructors")
-    async def instructors(self, interaction:discord.Interaction, message: str):
+    async def instructors(self, interaction:discord.Interaction, time: str, message: str):
         now_staff = w2w.get_employees_now(w2w.W2WPosition.INSTRUCTORS.value)
         print(now_staff)
         employees = self.fred.database.select_discord_users(now_staff)
