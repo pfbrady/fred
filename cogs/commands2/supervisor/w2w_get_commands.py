@@ -10,30 +10,56 @@ class W2W_Get_Commands(discord.app_commands.Group):
         super().__init__(name=name, description=description)
         self.fred: fr.Fred = fred
         self.guards_default_times = ['now', 'today', 'today-closers', 'tomorrow', 'tomorrow-openers', 'tomorrow-closers']
+        self.guards_default_pos = ['all', 'complex', 'main']
         self.instructors_default_times = ['today', 'tomorrow', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+        self.instructors_default_pos = ['all', 'group', 'privates', 'swam']
 
     @discord.app_commands.command()
     async def test(self, interaction:discord.Interaction):
         await interaction.response.send_message(f'hrloo')
 
-    async def guards_autocompletion(self, interaction: discord.Interaction, current: str
+    async def guards_time_auto(self, interaction: discord.Interaction, current: str
     )-> typing.List[discord.app_commands.Choice[str]]:
         return [
             discord.app_commands.Choice(name=default_time, value=default_time) 
             for default_time in self.guards_default_times if current.lower() in default_time.lower()
         ]
+    
+    async def guards_pos_auto(self, interaction: discord.Interaction, current: str
+    )-> typing.List[discord.app_commands.Choice[str]]:
+        return [
+            discord.app_commands.Choice(name=default_pos, value=default_pos) 
+            for default_pos in self.guards_default_pos if current.lower() in default_pos.lower()
+        ]
 
     @discord.app_commands.command(description="guards")
     @discord.app_commands.describe(time="The time group which you intend to send a message to. Options are listed above.")
-    @discord.app_commands.autocomplete(time=guards_autocompletion)
-    async def guards(self, interaction:discord.Interaction, time: str, message: str):
-        users = self.emps_from_default_time(time, w2w.W2WPosition.GUARDS.value)
-        employees = self.fred.database.select_discord_users(users)
+    @discord.app_commands.autocomplete(time=guards_time_auto, position=guards_pos_auto)
+    async def guards(self, interaction:discord.Interaction, time: str, position: str, message: str):
+        w2w_pos = self.w2wpos_from_default_pos(position, w2w.W2WPosition.GUARDS)
+        w2w_users = self.w2w_from_default_time(time, w2w_pos)
+        employees = self.fred.database.select_discord_users(w2w_users)
         employees_formatted = [f'<@{id}>' for id in employees]
         print(time)
         await interaction.response.send_message(f"ATTENTION {' '.join(employees_formatted)}: {message}.")
+
+    def w2wpos_from_default_pos(self, default_pos:str, type:w2w.W2WPosition):
+        if default_pos == 'all':
+            return type.value
+        elif type == w2w.W2WPosition.GUARDS:
+            if default_pos == 'complex':
+                return [type.value[0], type.value[2]]
+            else:
+                return [type.value[1], type.value[2]]
+        else: # if type is instructors
+            if default_pos == 'group':
+                return [type.value[1]]
+            else:
+                return [type.value[0]] # SWAM
+
+
     
-    def emps_from_default_time(self, default_time: str, positions: [w2w.W2WPosition] = None):
+    def w2w_from_default_time(self, default_time: str, positions: [w2w.W2WPosition] = None):
         now = datetime.datetime.now()
         if default_time == 'now':
             return w2w.get_employees_now(positions)
@@ -57,10 +83,16 @@ class W2W_Get_Commands(discord.app_commands.Group):
                 datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=7, minutes=50), 
                 positions
             )
+        elif default_time == 'tomorrow-closers':
+            return w2w.get_employees(
+                datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=19, minutes=59), 
+                datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=23, minutes=59), 
+                positions
+            )
 
 
     
-    async def instructors_autocompletion(self, interaction: discord.Interaction, current: str
+    async def instructors_time_autocompletion(self, interaction: discord.Interaction, current: str
     )-> typing.List[discord.app_commands.Choice[str]]:
         return [
             discord.app_commands.Choice(name=default_time, value=default_time) 
@@ -68,9 +100,9 @@ class W2W_Get_Commands(discord.app_commands.Group):
         ]
 
     @discord.app_commands.describe(time="The time group which you intend to send a message to. Options are listed above.")
-    @discord.app_commands.autocomplete(time=instructors_autocompletion) 
+    @discord.app_commands.autocomplete(time=instructors_time_autocompletion) 
     @discord.app_commands.command(description="instructors")
-    async def instructors(self, interaction:discord.Interaction, time: str, message: str):
+    async def instructors(self, interaction:discord.Interaction, time: str, position: str, message: str):
         now_staff = w2w.get_employees_now(w2w.W2WPosition.INSTRUCTORS.value)
         print(now_staff)
         employees = self.fred.database.select_discord_users(now_staff)

@@ -2,6 +2,7 @@ import settings
 import requests
 import datetime
 import time
+from typing import List
 from enum import Enum
 
 class W2WShift():
@@ -25,35 +26,36 @@ class W2WShift():
         
     def handle_time(self, shift, prefix):
             start_date = [int(i) for i in shift[f'{prefix}_DATE'].split('/')]
-            start_time = []
+            start_time = shift[f'{prefix}_TIME'].split(':')
             if 'pm' in shift[f'{prefix}_TIME']:
-                if ':' in shift[f'{prefix}_TIME']:
-                    start_time = shift[f'{prefix}_TIME'].split(':')
-                    start_time[0] = int(start_time[0]) + 12
+                hour_shift = 0 if '12' in start_time[0] else 12
+                if len(start_time) == 2:
+                    start_time[0] = int(start_time[0]) + hour_shift
                     start_time[1] = int(start_time[1][:-2])
                 else:
-                    start_time.append(int(shift[f'{prefix}_TIME'][:-2]) + 12)
+                    start_time[0] = (int(shift[f'{prefix}_TIME'][:-2]) + hour_shift)
                     start_time.append(0)
             else:
-                if ':' in shift[f'{prefix}_TIME']:
+                if len(start_time) == 2:
                     start_time = shift[f'{prefix}_TIME'].split(':')
                     start_time[0] = int(start_time[0])
                     start_time[1] = int(start_time[1][:-2])
                 else:
-                    start_time.append(int(shift[f'{prefix}_TIME'][:-2]))
+                    start_time[0] = (int(shift[f'{prefix}_TIME'][:-2]))
                     start_time.append(0)
+            #print(f'name: {shift["FIRST_NAME"]} date: {start_date} hour: {start_time[0]} minute {start_time[1]}')
             return datetime.datetime(start_date[2], start_date[0], start_date[1], start_time[0], start_time[1])
 
 class W2WPosition(Enum):
     SWAM = 728636793
     SWIM_INSTRUCTOR_WESTERN = 442123622
-    INSTRUCTORS = [728636793, 442123622]
+    INSTRUCTORS = [SWAM, SWIM_INSTRUCTOR_WESTERN]
 
     LIFEGUARD_COMPLEX = 342888572
     LIFEGUARD_MAIN_BUILDING = 342888573
     AQUATIC_SUPERVISOR = 342888570
     AQUATIC_SPECIALIST = 758159249
-    GUARDS = [342888572, 342888573, 342888570, 758159249]
+    GUARDS = [LIFEGUARD_COMPLEX, LIFEGUARD_MAIN_BUILDING, AQUATIC_SUPERVISOR, AQUATIC_SPECIALIST]
 
 def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None, positions: [W2WPosition] = None):
     # Handle date parameters: If only one date passed, sets times equal
@@ -85,6 +87,6 @@ def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None,
 def get_employees_now(positions: [W2WPosition] = None):
     return get_employees(datetime.datetime.now(), positions=positions)
 
-print(get_employees(datetime.datetime(2023, 10, 30, 12, 0), datetime.datetime(2023, 10, 30, 13, 0)))
-print(get_employees(datetime.datetime(2023, 10, 30, 12, 0)))
-print(get_employees_now())
+#print(get_employees(datetime.datetime(2023, 11, 5, 0, 0), datetime.datetime(2023, 11, 5, 23, 59)))
+#print(get_employees(datetime.datetime(2023, 10, 30, 12, 0)))
+#print(get_employees_now())
