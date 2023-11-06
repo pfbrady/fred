@@ -40,7 +40,6 @@ class W2W_Get_Commands(discord.app_commands.Group):
         w2w_users = self.w2w_from_default_time(time, w2w_pos)
         employees = self.fred.database.select_discord_users(w2w_users)
         employees_formatted = [f'<@{id}>' for id in employees]
-        print(time)
         await interaction.response.send_message(f"ATTENTION {' '.join(employees_formatted)}: {message}.")
 
     def w2wpos_from_default_pos(self, default_pos:str, type:w2w.W2WPosition):
@@ -65,16 +64,16 @@ class W2W_Get_Commands(discord.app_commands.Group):
             return w2w.get_employees_now(positions)
         elif default_time == 'today':
             return w2w.get_employees(now, datetime.datetime(now.year, now.month, now.day, 23, 59), positions)
-        elif default_time == 'today-closers':
-            return w2w.get_employees(
-                datetime.datetime(now.year, now.month, now.day, 19, 59), 
-                datetime.datetime(now.year, now.month, now.day, 23, 59), 
-                positions
-            )
         elif default_time == 'tomorrow':
             return w2w.get_employees(
                 datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1), 
                 datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=23, minutes=59), 
+                positions
+            )
+        elif default_time == 'today-closers':
+            return w2w.get_employees(
+                datetime.datetime(now.year, now.month, now.day, 19, 59), 
+                datetime.datetime(now.year, now.month, now.day, 23, 59), 
                 positions
             )
         elif default_time == 'tomorrow-openers':
@@ -103,11 +102,10 @@ class W2W_Get_Commands(discord.app_commands.Group):
     @discord.app_commands.autocomplete(time=instructors_time_autocompletion) 
     @discord.app_commands.command(description="instructors")
     async def instructors(self, interaction:discord.Interaction, time: str, position: str, message: str):
-        now_staff = w2w.get_employees_now(w2w.W2WPosition.INSTRUCTORS.value)
-        print(now_staff)
-        employees = self.fred.database.select_discord_users(now_staff)
+        w2w_pos = self.w2wpos_from_default_pos(position, w2w.W2WPosition.INSTRUCTORS)
+        w2w_users = self.w2w_from_default_time(time, w2w_pos)
+        employees = self.fred.database.select_discord_users(w2w_users)
         employees_formatted = [f'<@{id}>' for id in employees]
-        print(f"Unpacked list: {*employees_formatted,}")
         await interaction.response.send_message(f"ATTENTION {' '.join(employees_formatted)}: {message}.")
 
 async def setup(Fred):
