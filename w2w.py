@@ -58,7 +58,7 @@ class W2WPosition(Enum):
     GUARDS = [LIFEGUARD_COMPLEX, LIFEGUARD_MAIN_BUILDING, AQUATIC_SUPERVISOR, AQUATIC_SPECIALIST]
 
 def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None, positions: [W2WPosition] = None, position_flag: str = None):
-    # Handle date parameters: If only one date passed, sets times equal
+    # Handle date parameters: If only one date passed, sets times equal.
     start_date = dt_start.strftime("%m/%d/%Y")
     if dt_end:
         end_date = dt_end.strftime("%m/%d/%Y")
@@ -76,73 +76,54 @@ def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None,
             if isinstance(position.value, int):
                 positions.append(position.value)
 
-    # Selects guards with shifts that overlap with the indicated date and time
-    # selected_employees = []
-    # for shift in req_json['AssignedShiftList']:
-    #     w2w_shift = W2WShift(shift)
-    #     if not position_flag:
-    #         if w2w_shift.start_datetime < dt_end and w2w_shift.end_datetime > dt_start and w2w_shift.position_id in positions and w2w_shift.position_id not in selected_employees:
-    #             selected_employees.append(w2w_shift.employee_id)
-    #     else:
-    #         if not extreme_time:
-    #             extreme_time = w2w_shift.start_datetime
-    #         if position_flag == 'openers' and w2w_shift.start_datetime < extreme_time:
-    #             extreme_time = w2w_shift.start_datetime
-    #             selected_employees.clear()
-    #             selected_employees.append(w2w_shift.employee_id)
-    #         elif position_flag == 'openers' and w2w_shift.start_datetime == extreme_time:
-    #             selected_employees.append(w2w_shift.employee_id)        
-    #         elif position_flag == 'closers' and w2w_shift.start_datetime >= extreme_time:
-    #             extreme_time = w2w_shift.end_datetime
-    #             selected_employees.clear()
-    #             selected_employees.append(w2w_shift.employee_id)
-    #         elif position_flag == 'closers' and w2w_shift.start_datetime == extreme_time:
-    #             selected_employees.append(w2w_shift.employee_id)
-
-    w2w_shifts_by_date = []
-    current_date = None
+    # Creates shifts dictionary (filtering out non-relevant positions), ordered by date at root level then position_id at depth = 1.
+    w2w_shifts_by_date = {}
     for shift in req_json['AssignedShiftList']:
         if int(shift['POSITION_ID']) in positions:
             w2w_shift = W2WShift(shift)
-            if w2w_shift.start_date != current_date:
-                w2w_shifts_by_date.append([w2w_shift])
-                current_date = w2w_shift.start_date
+            if w2w_shift.start_date not in w2w_shifts_by_date.keys():
+                w2w_shifts_by_date.update({w2w_shift.start_date: {w2w_shift.position_id: [w2w_shift]}})
+            elif w2w_shift.position_id not in w2w_shifts_by_date[w2w_shift.start_date].keys():
+                w2w_shifts_by_date.update({w2w_shift.start_date: {w2w_shift.position_id: [w2w_shift]}})
             else:
-                w2w_shifts_by_date[-1].append(w2w_shift)
+                w2w_shifts_by_date[w2w_shift.start_date][w2w_shift.position_id].append(w2w_shift)
 
+    # Iterates through shift dictionary, selecting employees if their shift overlaps the passed in date/time range. If applicable,
+    # selects ONLY the extreme (i.e. closers or openers) shifts by day and position.
     selected_employees = []
-    for date in w2w_shifts_by_date:
-        extreme_time = None
-        sel_emp_temp = []
-        for w2w_shift in date:
-            if not position_flag:
-                if w2w_shift.start_datetime < dt_end and w2w_shift.end_datetime > dt_start and w2w_shift.employee_id not in sel_emp_temp:
-                    sel_emp_temp.append(w2w_shift.employee_id)
-            else:
-                print(f'name: {w2w_shift.first_name}, date: {w2w_shift.start_datetime}')
-                if not extreme_time:
-                    extreme_time = w2w_shift.start_datetime
-                if position_flag == 'openers' and w2w_shift.start_datetime < extreme_time:
-                    extreme_time = w2w_shift.start_datetime
-                    sel_emp_temp.clear()
-                    sel_emp_temp.append(w2w_shift.employee_id)
-                elif position_flag == 'openers' and w2w_shift.start_datetime == extreme_time:
-                    sel_emp_temp.append(w2w_shift.employee_id)        
-                elif position_flag == 'closers' and w2w_shift.end_datetime >= extreme_time:
-                    extreme_time = w2w_shift.end_datetime
-                    sel_emp_temp.clear()
-                    sel_emp_temp.append(w2w_shift.employee_id)
-                elif position_flag == 'closers' and w2w_shift.end_datetime == extreme_time:
-                    sel_emp_temp.append(w2w_shift.employee_id)
-        for emp in sel_emp_temp:
-            if sel_emp_temp not in selected_employees:
-                selected_employees.append(emp)
-
+    for date in w2w_shifts_by_date.values():
+        print(date)
+        for date_pos in date.values():
+            print(date_pos)
+            extreme_time = None
+            sel_emp_temp = []
+            for w2w_shift in date_pos:
+                if not position_flag:
+                    if w2w_shift.start_datetime < dt_end and w2w_shift.end_datetime > dt_start and w2w_shift.employee_id not in sel_emp_temp:
+                        sel_emp_temp.append(w2w_shift.employee_id)
+                else:
+                    if not extreme_time:
+                        extreme_time = w2w_shift.start_datetime
+                    if position_flag == 'openers' and w2w_shift.start_datetime < extreme_time:
+                        extreme_time = w2w_shift.start_datetime
+                        sel_emp_temp.clear()
+                        sel_emp_temp.append(w2w_shift.employee_id)
+                    elif position_flag == 'openers' and w2w_shift.start_datetime == extreme_time:
+                        sel_emp_temp.append(w2w_shift.employee_id)        
+                    elif position_flag == 'closers' and w2w_shift.end_datetime >= extreme_time:
+                        extreme_time = w2w_shift.end_datetime
+                        sel_emp_temp.clear()
+                        sel_emp_temp.append(w2w_shift.employee_id)
+                    elif position_flag == 'closers' and w2w_shift.end_datetime == extreme_time:
+                        sel_emp_temp.append(w2w_shift.employee_id)
+            for emp in sel_emp_temp:
+                if emp not in selected_employees:
+                    selected_employees.append(emp)
     return selected_employees
 
 def get_employees_now(positions: [W2WPosition] = None):
     return get_employees(datetime.datetime.now(), positions=positions)
 
-print(get_employees(datetime.datetime(2023, 11, 8, 0, 0), datetime.datetime(2023, 11, 10, 23, 59), [W2WPosition.LIFEGUARD_COMPLEX.value], 'openers'))
+#print(get_employees(datetime.datetime(2023, 11, 8, 0, 0), datetime.datetime(2023, 11, 10, 23, 59), [W2WPosition.LIFEGUARD_COMPLEX.value], 'openers'))
 #print(get_employees(datetime.datetime(2023, 10, 30, 12, 0)))
 #print(get_employees_now())
