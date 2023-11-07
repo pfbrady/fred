@@ -79,14 +79,16 @@ class W2W_Get_Commands(discord.app_commands.Group):
         elif default_time == 'tomorrow-openers':
             return w2w.get_employees(
                 datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1), 
-                datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=7, minutes=50), 
-                positions
+                datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=23, minutes=59), 
+                positions,
+                'openers'
             )
         elif default_time == 'tomorrow-closers':
             return w2w.get_employees(
                 datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=19, minutes=59), 
                 datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=23, minutes=59), 
-                positions
+                positions,
+                'closers'
             )
 
 
