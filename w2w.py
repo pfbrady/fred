@@ -124,6 +124,6 @@ def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None,
 def get_employees_now(positions: [W2WPosition] = None):
     return get_employees(datetime.datetime.now(), positions=positions)
 
-#print(get_employees(datetime.datetime(2023, 11, 8, 0, 0), datetime.datetime(2023, 11, 8, 23, 59), positions=W2WPosition.GUARDS.value, position_flag='closers'))
+#print(get_employees(datetime.datetime(2023, 11, 8, 0, 0), datetime.datetime(2023, 11, 8, 23, 59), positions=W2WPosition.INSTRUCTORS.value))
 #print(get_employees(datetime.datetime(2023, 10, 30, 12, 0)))
 #print(get_employees_now())
