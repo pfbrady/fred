@@ -31,6 +31,7 @@ class W2W_Get_Commands(discord.app_commands.Group):
             discord.app_commands.Choice(name=default_pos, value=default_pos) 
             for default_pos in self.guards_default_pos if current.lower() in default_pos.lower()
         ]
+    
 
     @discord.app_commands.command(description="guards")
     @discord.app_commands.describe(time="The time group which you intend to send a message to. Options are listed above.")
