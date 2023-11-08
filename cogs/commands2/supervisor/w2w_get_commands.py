@@ -9,7 +9,7 @@ class W2W_Get_Commands(discord.app_commands.Group):
     def __init__(self, name, description, fred):
         super().__init__(name=name, description=description)
         self.fred: fr.Fred = fred
-        self.guards_default_times = ['now', 'today', 'today-closers', 'tomorrow', 'tomorrow-openers', 'tomorrow-closers']
+        self.guards_default_times = ['now', 'today', 'today-closers', 'tomorrow', 'tomorrow-openers', 'tomorrow-closers', 'week', 'week-openers', 'week-closers']
         self.guards_default_pos = ['all', 'complex', 'main']
         self.instructors_default_times = ['today', 'tomorrow', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
         self.instructors_default_pos = ['all', 'group', 'privates', 'swam']
@@ -70,11 +70,18 @@ class W2W_Get_Commands(discord.app_commands.Group):
                 datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=23, minutes=59), 
                 positions
             )
+        elif default_time == 'week':
+            return w2w.get_employees(
+                datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1), 
+                datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=6, hours=23, minutes=59), 
+                positions
+            )
         elif default_time == 'today-closers':
             return w2w.get_employees(
                 datetime.datetime(now.year, now.month, now.day, 19, 59), 
                 datetime.datetime(now.year, now.month, now.day, 23, 59), 
-                positions
+                positions,
+                'closers'
             )
         elif default_time == 'tomorrow-openers':
             return w2w.get_employees(
@@ -87,6 +94,20 @@ class W2W_Get_Commands(discord.app_commands.Group):
             return w2w.get_employees(
                 datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=19, minutes=59), 
                 datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=23, minutes=59), 
+                positions,
+                'closers'
+            )
+        elif default_time == 'week-openers':
+            return w2w.get_employees(
+                datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=19, minutes=59), 
+                datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=6, hours=23, minutes=59), 
+                positions,
+                'openers'
+            )
+        elif default_time == 'week-openers':
+            return w2w.get_employees(
+                datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=19, minutes=59), 
+                datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=6, hours=23, minutes=59), 
                 positions,
                 'closers'
             )

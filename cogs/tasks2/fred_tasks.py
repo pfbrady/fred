@@ -47,10 +47,6 @@ class Tasks(commands.Cog):
                         await channel.send(f"Hi, there are ({swim_instr_unassigned_shifts}) unassigned Swim Instructor shifts tomorrow.")
 
     #COMMANDS
-    @commands.command()
-    async def ping(self, context):
-        print("pong?")
-        await context.send("Pong!")
 
 async def setup(Fred):
     await Fred.add_cog(Tasks(Fred))

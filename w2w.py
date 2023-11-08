@@ -4,6 +4,7 @@ import datetime
 import time
 from typing import List
 from enum import Enum
+from database import YMCADatabase
 
 class W2WShift():
     def __init__(self, w2w_api_dict):
@@ -84,7 +85,7 @@ def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None,
             if w2w_shift.start_date not in w2w_shifts_by_date.keys():
                 w2w_shifts_by_date.update({w2w_shift.start_date: {w2w_shift.position_id: [w2w_shift]}})
             elif w2w_shift.position_id not in w2w_shifts_by_date[w2w_shift.start_date].keys():
-                w2w_shifts_by_date.update({w2w_shift.start_date: {w2w_shift.position_id: [w2w_shift]}})
+                w2w_shifts_by_date[w2w_shift.start_date].update({w2w_shift.position_id: [w2w_shift]})
             else:
                 w2w_shifts_by_date[w2w_shift.start_date][w2w_shift.position_id].append(w2w_shift)
 
@@ -92,9 +93,7 @@ def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None,
     # selects ONLY the extreme (i.e. closers or openers) shifts by day and position.
     selected_employees = []
     for date in w2w_shifts_by_date.values():
-        print(date)
         for date_pos in date.values():
-            print(date_pos)
             extreme_time = None
             sel_emp_temp = []
             for w2w_shift in date_pos:
@@ -110,7 +109,7 @@ def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None,
                         sel_emp_temp.append(w2w_shift.employee_id)
                     elif position_flag == 'openers' and w2w_shift.start_datetime == extreme_time:
                         sel_emp_temp.append(w2w_shift.employee_id)        
-                    elif position_flag == 'closers' and w2w_shift.end_datetime >= extreme_time:
+                    elif position_flag == 'closers' and w2w_shift.end_datetime > extreme_time:
                         extreme_time = w2w_shift.end_datetime
                         sel_emp_temp.clear()
                         sel_emp_temp.append(w2w_shift.employee_id)
@@ -119,11 +118,12 @@ def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None,
             for emp in sel_emp_temp:
                 if emp not in selected_employees:
                     selected_employees.append(emp)
+    
     return selected_employees
 
 def get_employees_now(positions: [W2WPosition] = None):
     return get_employees(datetime.datetime.now(), positions=positions)
 
-#print(get_employees(datetime.datetime(2023, 11, 8, 0, 0), datetime.datetime(2023, 11, 10, 23, 59), [W2WPosition.LIFEGUARD_COMPLEX.value], 'openers'))
+#print(get_employees(datetime.datetime(2023, 11, 8, 0, 0), datetime.datetime(2023, 11, 8, 23, 59), positions=W2WPosition.GUARDS.value, position_flag='closers'))
 #print(get_employees(datetime.datetime(2023, 10, 30, 12, 0)))
 #print(get_employees_now())
