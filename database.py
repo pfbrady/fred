@@ -2,7 +2,8 @@ import sqlite3
 import requests
 import settings
 import logging
-import time
+import datetime
+import csv
 from typing import List
 from discord.user import User as DicordUser
 from difflib import SequenceMatcher
@@ -51,6 +52,21 @@ class YMCADatabase(object):
                 pectora_id,
                 FOREIGN KEY(w2w_id) REFERENCES w2w_users(id),
                 FOREIGN KEY(pectora_id) REFERENCES pectora_users(id)
+            );
+            CREATE TABLE IF NOT EXISTS chem_checks(
+                chem_uuid PRIMARY KEY,
+                discord_id,
+                first_name,
+                last_name,
+                pool,
+                sample_location,
+                sample_time,
+                submit_time, 
+                chlorine,
+                ph,
+                water_temp,
+                num_of_swimmers,
+                FOREIGN KEY(discord_id) REFERENCES discord_users(id)
             );
             COMMIT;
         """)
@@ -104,12 +120,11 @@ class YMCADatabase(object):
                 #logging.warning(f"Discord User {user.display_name} (ID: {user.id}) already in table 'discord_users'")
             else:
                 pass
-                #logging.log(msg=f"Discord User {user.display_name} (ID: {user.id}) inserted into table 'discord.users'", level=logging.INFO)
+                #logging.log(msg=f"Discord User {user.display_name} (ID: {user.id}) inserted into table 'discord_users'", level=logging.INFO)
 
     def select_discord_users(self, users: List):
         cursor = self.connection.cursor()
         try:
-            print("before query")
             cursor.execute(f"""
                 SELECT id FROM discord_users
                 WHERE w2w_id IN ({','.join(str(id) for id in users)})
@@ -135,6 +150,69 @@ class YMCADatabase(object):
             if SequenceMatcher(None, discord_user.display_name.lower(), w2w_name).ratio() > 0.75:
                 return w2w_user['W2W_EMPLOYEE_ID']
         return None
+    
+    def handle_names(self, first_name: str, last_name: str) -> str:
+        for discord_user in self.discord_users:
+            w2w_name = f"{first_name} {last_name}".lower()
+            if SequenceMatcher(None, discord_user.display_name.lower(), w2w_name).ratio() > 0.75:
+                return discord_user.id
+        return None
+    
+    def handle_formstack_time(self, formstack_time: str):
+        return datetime.datetime.strptime(formstack_time, '%Y-%m-%d %H:%M:%S')
+    
+    def handle_formstack_datetime(self, formstack_time: str):
+        return datetime.datetime.strptime(formstack_time, '%b %d, %Y %H:%M %p')
+    
+    def load_chems(self) -> None:
+        print("load chems")
+        cursor = self.connection.cursor()
+        with open('chems_nov_2023.csv', newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                discord_id = self.handle_names(row['Your Name (First)'], row['Your Name (Last)'])
+                try:
+                    cursor.executescript(f"""
+                        BEGIN;
+                        INSERT INTO chem_checks
+                        VALUES(
+                            {row['Unique ID']},
+                            {discord_id if discord_id else 'NULL'},
+                            '{row['Your Name (First)']}',
+                            '{row['Your Name (Last)']}',
+                            '{row['Western']}',
+                            '{row['Location of Water Sample, Western']}',
+                            '{self.handle_formstack_datetime(row['Date/Time'])}',
+                            '{self.handle_formstack_time(row['Time'])}',
+                            {row['Chlorine']},
+                            {row['PH']},
+                            '{row['Water Temperature']}',
+                            '{row['Total Number of Swimmers']}'
+                        );
+                        COMMIT;
+                    """)
+                except sqlite3.IntegrityError:
+                    pass
+                    logging.warning(f"Chem Check (ID: {row['Unique ID']}) already in table 'chem_checks'")
+                else:
+                    pass
+                    logging.log(msg=f"Chem Check (ID: {row['Unique ID']}) inserted into table 'chem_checks'", level=logging.INFO)
+
+    def select_last_chem(self, pool=None):
+        cursor = self.connection.cursor()
+        if not pool:
+            pool = 'Indoor Pool'
+        try:
+            cursor.execute(f"""
+                SELECT chem_uuid, first_name, last_name, MAX(sample_time) FROM
+                (SELECT * FROM chem_checks WHERE pool = '{pool}')
+
+            """)
+        except Exception as e:
+            print(e)
+        else:
+            return cursor.fetchone()
+
 
 # def run():
 #     con = sqlite3.connect("ymca_aquatics.db")
@@ -166,3 +244,7 @@ class YMCADatabase(object):
 #     run()
 # a = YMCADatabase()
 # print(a.select_discord_users([731933785, 568705929, 757270967, 564685546]))
+# a = YMCADatabase()
+# a.load_chems()
+# formstack_time = '2020-06-10 07:05:47'
+# print(datetime.datetime.strptime(formstack_time, '%Y-%m-%d %H:%M:%S'))
