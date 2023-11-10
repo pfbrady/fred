@@ -20,6 +20,7 @@ class Fred(Bot):
     async def on_ready(self):
         self.database.init_discord_users(self.get_all_members())
         #self.database.load_chems()
+        self.database.load_vats()
 
         await cogs.tasks2.fred_tasks.setup(self)
         await self.load_extension("cogs.commands2.supervisor.w2w_get_commands")
