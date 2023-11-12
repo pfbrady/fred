@@ -5,7 +5,7 @@ from discord.ext import commands, tasks
 import w2w
 import fred as fr
 
-class W2W_Get_Commands(discord.app_commands.Group):
+class W2W_Commands(discord.app_commands.Group):
     def __init__(self, name, description, fred):
         super().__init__(name=name, description=description)
         self.fred: fr.Fred = fred
@@ -155,4 +155,4 @@ class W2W_Get_Commands(discord.app_commands.Group):
         await interaction.response.send_message(f"Notification: {' '.join(employees_formatted)}: {message}.")
 
 async def setup(Fred):
-    Fred.tree.add_command(W2W_Get_Commands(name="w2w", description="test", fred=Fred))
+    Fred.tree.add_command(W2W_Commands(name="w2w", description="test", fred=Fred))
