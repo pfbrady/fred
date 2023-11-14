@@ -318,14 +318,14 @@ class YMCADatabase(object):
                     pass
                     logging.log(msg=f"VAT (ID: {row['Unique ID']}) inserted into table 'vats'", level=logging.INFO)
 
-    def select_last_chem(self, pool=None):
+    def select_last_chem(self, pools: List[str]=None):
         cursor = self.connection.cursor()
-        if not pool:
-            pool = 'Indoor Pool'
+        if not pools:
+            pools = ['Indoor Pool']
         try:
             cursor.execute(f"""
                 SELECT discord_users.id, discord_users.nickname, chem.chem_uuid, MAX(chem.sample_time) FROM
-                (SELECT * FROM chem_checks WHERE pool = '{pool}') AS chem
+                (SELECT * FROM chem_checks WHERE pool IN ({','.join(str(pool) for pool in pools)}) AS chem
                 INNER JOIN discord_users
                 ON chem.discord_id = discord_users.id;
             """)
