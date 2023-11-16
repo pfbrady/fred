@@ -55,6 +55,9 @@ cover/
 *.mo
 *.pot
 
+# Formstack csv exports:
+*.csv
+
 # Sqlite stuff:
 *.db
 

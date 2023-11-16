@@ -16,6 +16,7 @@ class Tasks(commands.Cog):
     def __init__(self, Fred):
         self.Fred = Fred
         self.send_unassigned_shifts.start()
+        self.send_last_chem.start()
 
     #EVENTS
     '''
@@ -28,6 +29,12 @@ class Tasks(commands.Cog):
     async def change_stats(self):
         await self.dBot.change_presence(activity=discord.Game(next(status)))
     '''
+    @tasks.loop(seconds=30.0)
+    async def send_last_chem(self):
+        for guild in self.Fred.guilds:
+            for channel in guild.text_channels:
+                if channel.name == 'test3':
+                    await channel.send(f"The last chem check completed was: {self.Fred.database.select_last_chem(['Indoor Pool'])}")
 
     @tasks.loop(seconds=10.0)
     async def send_unassigned_shifts(self):

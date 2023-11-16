@@ -18,6 +18,15 @@ class Fred(Bot):
         self.database = db.YMCADatabase()
 
     async def on_ready(self):
+        self.database.init_discord_users(self.get_all_members())
+        #self.database.load_chems()
+        #self.database.load_vats()
+
+        await self.load_extension("cogs.commands2.supervisor.w2w_commands")
+        await self.load_extension("cogs.commands2.supervisor.formstack_commands")
+        self.tree.copy_global_to(guild=self.guilds[0])
+        await self.tree.sync(guild=self.guilds[0])
+
         await cogs.tasks2.fred_tasks.setup(self)
         await w2w.setup(self)
         self.database.init_discord_users(self.get_all_members())
