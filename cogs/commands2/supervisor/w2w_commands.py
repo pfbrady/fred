@@ -152,7 +152,7 @@ class W2W_Commands(discord.app_commands.Group):
         w2w_users = self.w2w_from_default_time(time, w2w_pos)
         employees = self.fred.database.select_discord_users(w2w_users)
         employees_formatted = [f'<@{id}>' for id in employees]
-        await interaction.response.send_message(f"Notification: {' '.join(employees_formatted)}: {message}.")
+        await interaction.response.send_message(f"__Notification__: {' '.join(employees_formatted)}: {message}.", ephemeral=True)
 
 async def setup(Fred):
     Fred.tree.add_command(W2W_Commands(name="w2w", description="test", fred=Fred))

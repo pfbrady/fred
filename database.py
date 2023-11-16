@@ -318,22 +318,34 @@ class YMCADatabase(object):
                     pass
                     logging.log(msg=f"VAT (ID: {row['Unique ID']}) inserted into table 'vats'", level=logging.INFO)
 
-    def select_last_chem(self, pools: List[str]=None):
+    def select_last_chem(self, pools: List[str]):
         cursor = self.connection.cursor()
-        if not pools:
-            pools = ['Indoor Pool']
+        chems = []
+        for pool in pools:
+            try:
+                cursor.execute(f"""
+                    SELECT discord_users.id, chem.chem_uuid, chem.pool, chem.chlorine, chem.ph, chem.water_temp, chem.num_of_swimmers, MAX(chem.sample_time)
+                    FROM (SELECT * FROM chem_checks WHERE pool = '{pool}') AS chem
+                    INNER JOIN discord_users
+                    ON chem.discord_id = discord_users.id;
+                """)
+            except Exception as e:
+                print(e)
+            else:
+                chems.append(cursor.fetchone())
+        return chems
+
+    def select_last_vat(self):
+        cursor = self.connection.cursor()
         try:
             cursor.execute(f"""
-                SELECT discord_users.id, discord_users.nickname, chem.chem_uuid, MAX(chem.sample_time) FROM
-                (SELECT * FROM chem_checks WHERE pool IN ({','.join(str(pool) for pool in pools)}) AS chem
-                INNER JOIN discord_users
-                ON chem.discord_id = discord_users.id;
+                SELECT guard_discord_id, sup_discord_id, vat_uuid, pool, num_of_swimmers, num_of_guards, stimuli, pass, response_time, MAX(vat_time)
+                FROM vats
             """)
         except Exception as e:
             print(e)
         else:
-            return cursor.fetchone()
-
+            return [cursor.fetchone()]
 # if __name__ == "__main__":
 #     run()
 #a = YMCADatabase()
@@ -342,3 +354,4 @@ class YMCADatabase(object):
 # a.load_chems()
 # formstack_time = '2020-06-10 07:05:47'
 # print(datetime.datetime.strptime(formstack_time, '%Y-%m-%d %H:%M:%S'))
+
