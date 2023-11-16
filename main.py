@@ -4,11 +4,11 @@ import logging
 import requests
 from discord.ext import commands
 import get_open_shifts as gos
-import pytz, datetime
+import pytz
+import datetime
+import asyncio
 
-# Set the timezone to Eastern Standard Time (EST)
 est = pytz.timezone('US/Eastern')
-# Get the current time in EST
 current_time = datetime.datetime.now(est)
 
 intents = discord.Intents.default()
@@ -34,6 +34,20 @@ async def send_unassigned_shifts():
                     await channel.send(f"Hi, there are ({swam_unassigned_shifts}) unassigned SWAM  shifts tomorrow.")
 
 
+class Fred:
+    def __init__(self, client):
+        self.client = client
+
+    async def tasks(self):
+        unassigned_shifts = await send_unassigned_shifts()
+        return unassigned_shifts
+
+    async def on_ready(self):
+        print(f'Logged in as {self.client.user} (ID: {self.client.user.id})')
+        print('------')
+        while True:
+            await self.tasks()
+            await asyncio.sleep(3600)
 def run():
     @client.event
     async def on_ready():
@@ -48,11 +62,6 @@ def run():
 
 
 if __name__ == "__main__":
-    run()
-
-
-'''
-req = requests.get('https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/EmployeeList?key=' + settings.W2W_TOKEN)
-req_json = req.json()
-print(req_json["EmployeeList"][0])
-'''
+    bot_instance = Fred(client)
+    client.loop.create_task(bot_instance.on_ready())
+    client.run(settings.DISCORD_TOKEN)

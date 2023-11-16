@@ -4,6 +4,7 @@ import settings
 import logging
 import datetime
 import csv
+import time
 from typing import List
 from discord.user import User as DicordUser
 from difflib import SequenceMatcher
