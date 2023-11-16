@@ -1,17 +1,16 @@
 import settings
 import requests
 import datetime
-import time
 
 # Function goal: get assigned shifts by date and by role
 # create possible list of roles that users can pass in: lifeguards, leads, instructors
 
-def get_assigned_shifts(start_date=None, end_date=None, role=None):
+def get_assigned_shifts(start_date=None, role=None):
     today = datetime.date.today().strftime("%m/%d/%Y")
     tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%m/%d/%Y")  # Next day
 
     start_date = tomorrow if start_date == 'tomorrow' else today if start_date == 'today' else start_date
-    end_date = start_date if end_date in [None, 'today'] else tomorrow if end_date == 'tomorrow' else end_date
+    end_date = start_date
 
     api_url_shifts = f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN}'
     req_json_shifts = requests.get(api_url_shifts).json()['AssignedShiftList']
@@ -40,4 +39,4 @@ def get_assigned_shifts(start_date=None, end_date=None, role=None):
     
     return '\n'.join(messages)
 
-print(get_assigned_shifts('10/25/2023', role='lifeguards'))
+#print(get_assigned_shifts('10/25/2023', role='lifeguards'))

@@ -55,9 +55,9 @@ class Tasks(commands.Cog):
         await context.send("Pong!")
 
     @commands.command()
-    async def shifts(self, context, start_date=None, end_date=None, role=None):
+    async def shifts(self, context, start_date=None, role=None):
         print("shifts?")
-        shifts_info = get_assigned_shifts(start_date, end_date, role)
+        shifts_info = get_assigned_shifts(start_date, role)
         await context.send(shifts_info)
 
 async def setup(Fred):
