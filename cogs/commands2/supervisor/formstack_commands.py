@@ -53,7 +53,7 @@ class Formstack_Commands(discord.app_commands.Group):
         vats_formatted = [f'Guard Name: <@{vat[0]}>\n Supervisor Name: <@{vat[1]}>\n VAT ID: {vat[2]}\n Pool: {vat[3]}\n Number of Swimmers: {vat[4]}\n Number of Guards: {vat[5]}\n Stimuli: {vat[6]}\n Pass?: {vat[7]}\n Response Time (s): {vat[8]}\n Time: {vat[9]}\n\n' for vat in vats]
         await interaction.response.send_message(f"# Most Recent VAT:\n{''.join(vats_formatted)}", ephemeral=True)
 
-    @discord.app_commands.check(is_supervisor)
+    #@discord.app_commands.check(is_supervisor)
     @discord.app_commands.command(description="vats")
     async def vats_dashboard(self, interaction:discord.Interaction):
         now = datetime.datetime.now()
