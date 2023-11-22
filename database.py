@@ -347,6 +347,19 @@ class YMCADatabase(object):
             print(e)
         else:
             return [cursor.fetchone()]
+        
+    def select_vats_month(self, dt_now: datetime.datetime):
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(f"""
+                SELECT guard_discord_id, sup_discord_id, vat_uuid, pool, num_of_swimmers, num_of_guards, stimuli, pass, response_time, vat_time
+                FROM vats
+                WHERE vat_time > '{datetime.datetime(dt_now.year, dt_now.month, 1)}';
+            """)
+        except Exception as e:
+            print(e)
+        else:
+            return cursor.fetchall()
 # if __name__ == "__main__":
 #     run()
 #a = YMCADatabase()
@@ -355,4 +368,4 @@ class YMCADatabase(object):
 # a.load_chems()
 # formstack_time = '2020-06-10 07:05:47'
 # print(datetime.datetime.strptime(formstack_time, '%Y-%m-%d %H:%M:%S'))
-
+#print(a.select_vats_month(datetime.datetime.now()))
