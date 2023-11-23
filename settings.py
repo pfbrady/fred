@@ -9,6 +9,10 @@ MEGIN_ROLE_ID = int(os.getenv('MEGIN_ROLE_ID'))
 SUPERVISOR_ROLE_ID = int(os.getenv('SUPERVISOR_ROLE_ID'))
 LIFEGUARD_ROLE_ID = int(os.getenv('LIFEGUARD_ROLE_ID'))
 
+FORM_OPENING_CLOSING_RSS = (os.getenv('FORM_OPENING_CLOSING_RSS'))
+FORM_CHEM_CHECK_RSS = (os.getenv('FORM_CHEM_CHECK_RSS'))
+FORM_VAT_RSS = (os.getenv('FORM_VAT_RSS'))
+
 W2W_TOKEN = os.getenv('W2W_TOKEN')
 
 BASE_DIR = (os.path.dirname(__file__))
