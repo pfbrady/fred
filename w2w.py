@@ -124,6 +124,89 @@ def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None,
 def get_employees_now(positions: [W2WPosition] = None):
     return get_employees(datetime.datetime.now(), positions=positions)
 
+def w2wpos_from_default_pos(default_pos:str, type:W2WPosition):
+    if default_pos == 'all':
+        return type.value
+    elif type == W2WPosition.GUARDS:
+        if default_pos == 'complex':
+            return [type.value[0], type.value[2]]
+        else:
+            return [type.value[1], type.value[2]]
+    else: # if type is instructors
+        if default_pos == 'group':
+            return [type.value[1]]
+        else:
+            return [type.value[0]] # SWAM
+        
+def w2w_from_default_time(default_time: str, positions: [W2WPosition] = None):
+    now = datetime.datetime.now()
+    if default_time == 'now':
+        return get_employees_now(positions)
+    elif default_time == 'earlier-today':
+        return get_employees(datetime.datetime(now.year, now.month, now.day), now, positions)
+    elif default_time == 'later-today':
+        return get_employees(now, datetime.datetime(now.year, now.month, now.day, 23, 59), positions)
+    elif default_time == 'today':
+        return get_employees(datetime.datetime(now.year, now.month, now.day), datetime.datetime(now.year, now.month, now.day, 23, 59), positions)
+    elif default_time == 'tomorrow':
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1), 
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=23, minutes=59), 
+            positions
+        )
+    elif default_time == 'week':
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1), 
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=6, hours=23, minutes=59), 
+            positions
+        )
+    elif default_time == 'today-closers':
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day, 19, 59), 
+            datetime.datetime(now.year, now.month, now.day, 23, 59), 
+            positions,
+            'closers'
+        )
+    elif default_time == 'tomorrow-openers':
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1), 
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=23, minutes=59), 
+            positions,
+            'openers'
+        )
+    elif default_time == 'tomorrow-closers':
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=19, minutes=59), 
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=23, minutes=59), 
+            positions,
+            'closers'
+        )
+    elif default_time == 'week-openers':
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=19, minutes=59), 
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=6, hours=23, minutes=59), 
+            positions,
+            'openers'
+        )
+    elif default_time == 'week-openers':
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=19, minutes=59), 
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=6, hours=23, minutes=59), 
+            positions,
+            'closers'
+        )
+    else:
+        weekdays = {'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3, 'friday': 4, 'saturday': 5, 'sunday': 6}
+        today = datetime.datetime(now.year, now.month, now.day).weekday()
+        delta = weekdays[default_time] - today
+        if delta <= 0:
+            delta += 7
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=delta), 
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=delta, hours=23, minutes=59), 
+            positions
+        )
+
 #print(get_employees(datetime.datetime(2023, 11, 8, 0, 0), datetime.datetime(2023, 11, 8, 23, 59), positions=W2WPosition.INSTRUCTORS.value))
 #print(get_employees(datetime.datetime(2023, 10, 30, 12, 0)))
 #print(get_employees_now())

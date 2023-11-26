@@ -3,7 +3,9 @@ from discord.ext import commands, tasks
 import get_open_shifts as gos
 import datetime
 import pytz
-from w2w import get_assigned_shifts
+import w2w
+import cogs.commands2.supervisor.w2w_commands as w2w_comm
+import daxko
 
 
 from itertools import cycle
@@ -13,10 +15,11 @@ from itertools import cycle
 class Tasks(commands.Cog):
 
 
-    def __init__(self, Fred):
-        self.Fred = Fred
+    def __init__(self, fred):
+        self.fred = fred
         #self.send_unassigned_shifts.start()
-        self.send_last_chem.start()
+        #self.send_last_chem.start()
+        self.update_tables.start()
 
     #EVENTS
     '''
@@ -29,12 +32,35 @@ class Tasks(commands.Cog):
     async def change_stats(self):
         await self.dBot.change_presence(activity=discord.Game(next(status)))
     '''
-    @tasks.loop(seconds=30.0)
-    async def send_last_chem(self):
-        for guild in self.Fred.guilds:
-            for channel in guild.text_channels:
-                if channel.name == 'test3':
-                    await channel.send(f"The last chem check completed was: {self.Fred.database.select_last_chem(['Indoor Pool'])}")
+    # @tasks.loop(seconds=30.0)
+    # async def send_last_chem(self):
+    #     for guild in self.fred.guilds:
+    #         for channel in guild.text_channels:
+    #             if channel.name == 'test3':
+    #                 await channel.send(f"The last chem check completed was: {self.Fred.database.select_last_chem(['Indoor Pool'])}")
+    
+    @tasks.loop(seconds=10.0)
+    async def update_tables(self):
+        updates = self.fred.database.update_tables_rss()
+        open_pools = daxko.get_open_pools()
+        for pool in open_pools:
+            for guild in self.fred.guilds:
+                for channel in guild.text_channels:
+                    if channel.name == 'test3':
+                        await channel.send(f"Updated Chems/VATs/Opening&Closing: {updates}")
+                        last_chem = self.fred.database.select_last_chem([pool])
+                        if last_chem[0][7] < str(datetime.datetime.now() - datetime.timedelta(hours=2, minutes=30)):
+                            if pool == 'Indoor Pool':
+                                position = 'main'
+                            else:
+                                position = 'complex'
+                            time = 'now'
+                            test = w2w_comm.W2W_Commands('test', 'test', self.fred)
+                            w2w_pos = test.w2wpos_from_default_pos(position, w2w.W2WPosition.GUARDS)
+                            w2w_users = test.w2w_from_default_time(time, w2w_pos)
+                            employees = self.fred.database.select_discord_users(w2w_users)
+                            employees_formatted = [f'<@{id}>' for id in employees]
+                            await channel.send(f"Notification: {' '.join(employees_formatted)} Please submit a chemical check for the {pool}.")
 
     # @tasks.loop(seconds=10.0)
     # async def send_unassigned_shifts(self):
@@ -46,7 +72,7 @@ class Tasks(commands.Cog):
     #     print(current_time.hour)
 
     #     if current_time.hour == 14:
-    #         for guild in self.Fred.guilds:
+    #         for guild in self.fred.guilds:
     #             for channel in guild.text_channels:
     #                 if channel.name == 'test' and lifeguard_unassigned_shifts != 0:
     #                     await channel.send(f"Hi, there are ({lifeguard_unassigned_shifts}) unassigned Lifeguard shifts tomorrow.")
@@ -64,8 +90,8 @@ class Tasks(commands.Cog):
     @commands.command()
     async def shifts(self, context, start_date=None, role=None):
         print("shifts?")
-        shifts_info = get_assigned_shifts(start_date, role)
+        shifts_info = w2w.get_assigned_shifts(start_date, role)
         await context.send(shifts_info)
 
-async def setup(Fred):
-    await Fred.add_cog(Tasks(Fred))
+async def setup(fred):
+    await fred.add_cog(Tasks(fred))

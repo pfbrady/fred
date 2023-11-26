@@ -1,5 +1,7 @@
 import feedparser
 from html.parser import HTMLParser
+import datetime
+import time
 import settings
 
 class FormstackHTMLParser(HTMLParser):
@@ -28,7 +30,7 @@ class FormstackHTMLParser(HTMLParser):
             self.form_dict[data[:-1]] = None
             self.key_flag = False
         elif self.value_flag == True:
-            self.form_dict[self.last_key] = data
+            self.form_dict[self.last_key] = data.strip()
 
 def form_rss_to_dict(link: str):
     fp = feedparser.parse(link)
@@ -37,6 +39,9 @@ def form_rss_to_dict(link: str):
         form_parser = FormstackHTMLParser()
         form_parser.feed(entry.content[0].value)
         parsed_entries.append(form_parser.form_dict)
+        parsed_entries[-1]['Time'] = datetime.datetime.strptime(entry.published, '%a, %d %b %Y %X %z').replace(tzinfo=None)
+        parsed_entries[-1]['Unique ID'] = int(entry.link.split('/view/')[1].split('/')[0])
+    parsed_entries.reverse()
     return parsed_entries
 
-print(form_rss_to_dict(settings.FORM_OPENING_CLOSING_RSS))
+#print(form_rss_to_dict(settings.FORM_CHEMS_RSS)[-1])

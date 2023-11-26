@@ -48,7 +48,7 @@ class Formstack_Commands(discord.app_commands.Group):
         await interaction.response.send_message(f"# Summary of Chem Checks:\n{''.join(chems_formatted)}", ephemeral=True)
 
     @discord.app_commands.command(description="vats")
-    async def vats_t(self, interaction:discord.Interaction):
+    async def vats(self, interaction:discord.Interaction):
         vats = self.fred.database.select_last_vat()
         vats_formatted = [f'Guard Name: <@{vat[0]}>\n Supervisor Name: <@{vat[1]}>\n VAT ID: {vat[2]}\n Pool: {vat[3]}\n Number of Swimmers: {vat[4]}\n Number of Guards: {vat[5]}\n Stimuli: {vat[6]}\n Pass?: {vat[7]}\n Response Time (s): {vat[8]}\n Time: {vat[9]}\n\n' for vat in vats]
         await interaction.response.send_message(f"# Most Recent VAT:\n{''.join(vats_formatted)}", ephemeral=True)

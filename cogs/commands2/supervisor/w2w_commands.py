@@ -15,7 +15,8 @@ class W2W_Commands(discord.app_commands.Group):
         self.instructors_default_pos = ['all', 'group', 'privates', 'swam']
 
     @discord.app_commands.command()
-    async def test(self, interaction:discord.Interaction):
+    async def testy(self, interaction:discord.Interaction):
+        self.fred.database.update_tables_rss()
         await interaction.response.send_message(f'hrloo')
 
     async def guards_time_auto(self, interaction: discord.Interaction, current: str
@@ -36,12 +37,12 @@ class W2W_Commands(discord.app_commands.Group):
     @discord.app_commands.command(description="guards")
     @discord.app_commands.describe(time="The time group which you intend to send a message to. Options are listed above.")
     @discord.app_commands.autocomplete(time=guards_time_auto, position=guards_pos_auto)
-    async def guards(self, interaction:discord.Interaction, time: str, position: str, message: str):
-        w2w_pos = self.w2wpos_from_default_pos(position, w2w.W2WPosition.GUARDS)
-        w2w_users = self.w2w_from_default_time(time, w2w_pos)
+    async def guards2(self, interaction:discord.Interaction, time: str, position: str, message: str):
+        w2w_pos = w2w.w2wpos_from_default_pos(position, w2w.W2WPosition.GUARDS)
+        w2w_users = w2w.w2w_from_default_time(time, w2w_pos)
         employees = self.fred.database.select_discord_users(w2w_users)
         employees_formatted = [f'<@{id}>' for id in employees]
-        await interaction.response.send_message(f"Notification: {' '.join(employees_formatted)}: {message}.")
+        await interaction.response.send_message(f"Notification: {' '.join(employees_formatted)}: {message}")
 
     def w2wpos_from_default_pos(self, default_pos:str, type:w2w.W2WPosition):
         if default_pos == 'all':
@@ -148,8 +149,8 @@ class W2W_Commands(discord.app_commands.Group):
     @discord.app_commands.autocomplete(time=instructors_time_auto, position=instructors_pos_auto) 
     @discord.app_commands.command(description="instructors")
     async def instructors(self, interaction:discord.Interaction, time: str, position: str, message: str):
-        w2w_pos = self.w2wpos_from_default_pos(position, w2w.W2WPosition.INSTRUCTORS)
-        w2w_users = self.w2w_from_default_time(time, w2w_pos)
+        w2w_pos = w2w.w2wpos_from_default_pos(position, w2w.W2WPosition.INSTRUCTORS)
+        w2w_users = w2w.w2w_from_default_time(time, w2w_pos)
         employees = self.fred.database.select_discord_users(w2w_users)
         employees_formatted = [f'<@{id}>' for id in employees]
         await interaction.response.send_message(f"__Notification__: {' '.join(employees_formatted)}: {message}.", ephemeral=True)

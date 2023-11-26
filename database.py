@@ -8,6 +8,7 @@ import time
 from typing import List
 from discord.user import User as DicordUser
 from difflib import SequenceMatcher
+import rss
 
 class YMCADatabase(object):
 
@@ -25,7 +26,82 @@ class YMCADatabase(object):
                 self.discord_users = []
                 self.init_tables()
                 self.init_w2w_users()
+                self.form_tables = {'chem_checks': {'last_id': 0, 'rss': settings.FORM_CHEMS_RSS}, 
+                      'vats': {'last_id': 0, 'rss': settings.FORM_VATS_RSS},
+                      'opening_closing': {'last_id': 0, 'rss': settings.FORM_OPENING_CLOSING_RSS}
+                    }
+    def update_tables_rss(self):
+        num_of_updates = {}
+        for table, info in self.form_tables.items():
+            table_num_of_updates = 0
+            updated_rss = rss.form_rss_to_dict(info['rss'])
+            for entry in updated_rss:
+                if entry['Unique ID'] > info['last_id']:
+                    table_num_of_updates += 1
+                    self.insert_entry_rss(entry, table)
+                    info['last_id'] = entry['Unique ID']
+            num_of_updates[table] = table_num_of_updates
+        return num_of_updates
 
+    def insert_entry_rss(self, entry_dict: dict, table: str):
+        cursor = self.connection.cursor()
+        if table == 'chem_checks':
+            discord_id = self.handle_names(entry_dict['Your Name'])
+            try:
+                cursor.executescript(f"""
+                    BEGIN;
+                    INSERT INTO {table}
+                    VALUES(
+                        {entry_dict['Unique ID']},
+                        {discord_id if discord_id else 'NULL'},
+                        '{self.handle_quotes(entry_dict['Your Name'])}',
+                        '{entry_dict['Western']}',
+                        '{entry_dict['Location of Water Sample, Western']}',
+                        '{self.handle_rss_datetime(entry_dict['Date/Time'])}',
+                        '{entry_dict['Time']}',
+                        {entry_dict['Chlorine']},
+                        {entry_dict['PH']},
+                        '{entry_dict['Water Temperature']}',
+                        '{entry_dict['Total Number of Swimmers'].strip()}'
+                    );
+                    COMMIT;
+                """)
+            except sqlite3.IntegrityError:
+                logging.warning(f"Chem Check (ID: {entry_dict['Unique ID']}) already in table 'chem_checks'")
+            else:
+                logging.log(msg=f"Chem Check (ID: {entry_dict['Unique ID']}) inserted into table 'chem_checks'", level=logging.INFO)
+        elif table == 'vats':
+            guard_discord_id = self.handle_names(entry_dict['Name of Lifeguard Vigilance Tested'])
+            sup_discord_id = self.handle_names(entry_dict['Who monitored & conducted the vigilance test?'])
+            try:
+                cursor.executescript(f"""
+                    BEGIN;
+                    INSERT INTO vats
+                    VALUES(
+                        {entry_dict['Unique ID']},
+                        {guard_discord_id if guard_discord_id else 'NULL'},
+                        '{self.handle_quotes(entry_dict['Name of Lifeguard Vigilance Tested'])}',
+                        {sup_discord_id if sup_discord_id else 'NULL'},
+                        '{self.handle_quotes(entry_dict['Who monitored & conducted the vigilance test?'])}',
+                        '{entry_dict['Which Pool? ']}',
+                        '{self.handle_rss_datetime(f"{entry_dict['Date of Vigilance Test Conducted']} {entry_dict['Time of Vigilance Test Conducted ']}")}',
+                        '{entry_dict['Time']}',
+                        '{self.handle_num_of_guests(entry_dict['How many guests do you believe were in the pool?'])}',
+                        '{self.handle_num_of_guards(entry_dict['Were they the only lifeguard watching the pool?'])}',
+                        '{entry_dict['What type of stimuli was used?']}',
+                        '{self.handle_depth(entry_dict['What was the water depth where the stimuli was placed?'])}',
+                        '{self.handle_pass(entry_dict['Did the lifeguard being vigilance tested respond to the stimuli?'])}',
+                        '{self.handle_response_time(entry_dict['Did the lifeguard being vigilance tested respond to the stimuli?'])}'
+                    );
+                    COMMIT;
+                """)
+            except sqlite3.IntegrityError:
+                logging.warning(f"VAT (ID: {entry_dict['Unique ID']}) already in table 'vats'")
+            else:
+                logging.log(msg=f"VAT (ID: {entry_dict['Unique ID']}) inserted into table 'vats'", level=logging.INFO)
+        else:
+            pass
+    
 
     def init_tables(self):
         cursor = self.connection.cursor()
@@ -57,8 +133,7 @@ class YMCADatabase(object):
             CREATE TABLE IF NOT EXISTS chem_checks(
                 chem_uuid PRIMARY KEY,
                 discord_id,
-                first_name,
-                last_name,
+                name,
                 pool,
                 sample_location,
                 sample_time,
@@ -72,11 +147,9 @@ class YMCADatabase(object):
             CREATE TABLE IF NOT EXISTS vats(
                 vat_uuid PRIMARY KEY,
                 guard_discord_id,
-                guard_first_name,
-                guard_last_name,
+                guard_name,
                 sup_discord_id,
-                sup_first_name,
-                sup_last_name,
+                sup_name,
                 pool,
                 vat_time,
                 submit_time,
@@ -172,12 +245,17 @@ class YMCADatabase(object):
                 return w2w_user['W2W_EMPLOYEE_ID']
         return None
     
-    def handle_names(self, first_name: str, last_name: str) -> str:
+    def handle_names(self, name: str, last_name: str = None) -> str:
+        if last_name:
+            name = f"{name} {last_name}".lower()
         for discord_user in self.discord_users:
-            w2w_name = f"{first_name} {last_name}".lower()
-            if SequenceMatcher(None, discord_user.display_name.lower(), w2w_name).ratio() > 0.75:
+            #print(f'{discord_user.display_name.lower()}: {SequenceMatcher(None, discord_user.display_name.lower(), name.lower()).ratio()}')
+            if SequenceMatcher(None, discord_user.display_name.lower(), name.lower()).ratio() > 0.75:
                 return discord_user.id
         return None
+    
+    def handle_rss_datetime(self, formstack_time: str):
+        return datetime.datetime.strptime(formstack_time, '%b %d, %Y %H:%M %p')
 
     def handle_formstack_datetime(self, formstack_time: str):
         return datetime.datetime.strptime(formstack_time, '%m/%d/%Y %H:%M')
@@ -189,8 +267,7 @@ class YMCADatabase(object):
         except ValueError as e:
             logging.warning(f"Error: Number of Guests field improperly filled out on Formstack {e}")
             return 10
-        
-    
+          
     def handle_num_of_guards(self, guards_string: str):
         if guards_string == 'Yes':
             return 1
@@ -206,7 +283,7 @@ class YMCADatabase(object):
         else:
             depth_list = depth_string.split(' ')
             depth_list = depth_list[0].split('-')
-            return float(depth_list[0]) / float(depth_list[1])
+            return (float(depth_list[0]) + float(depth_list[1])) / 2
         
     def handle_pass(self, pass_string: str):
         if pass_string == 'Yes (10 seconds or less)':
@@ -219,7 +296,7 @@ class YMCADatabase(object):
             return 10.0
         elif 'seconds' in pass_string:
             pass_list = pass_string.split(' ')
-            return float(pass_list[1][1:]) / float(pass_list[3])
+            return (float(pass_list[1][1:]) + float(pass_list[3])) / 2
         else:
             return 60.0
         
@@ -243,8 +320,7 @@ class YMCADatabase(object):
                         VALUES(
                             {row['Unique ID']},
                             {discord_id if discord_id else 'NULL'},
-                            '{self.handle_quotes(row['Your Name (First)'])}',
-                            '{self.handle_quotes(row['Your Name (Last)'])}',
+                            '{self.handle_quotes(row['Your Name (First)']).strip()} {self.handle_quotes(row['Your Name (Last)']).strip()}',
                             '{row['Western']}',
                             '{row['Location of Water Sample, Western']}',
                             '{self.handle_formstack_datetime(row['Date/Time'])}',
@@ -257,11 +333,11 @@ class YMCADatabase(object):
                         COMMIT;
                     """)
                 except sqlite3.IntegrityError:
-                    pass
                     logging.warning(f"Chem Check (ID: {row['Unique ID']}) already in table 'chem_checks'")
+                    self.form_tables['chem_checks']['last_id'] = row['Unique ID']
                 else:
-                    pass
                     logging.log(msg=f"Chem Check (ID: {row['Unique ID']}) inserted into table 'chem_checks'", level=logging.INFO)
+                    self.form_tables['chem_checks']['last_id'] = row['Unique ID']
     
     def load_vats(self) -> None:
         print("load vats")
@@ -295,11 +371,9 @@ class YMCADatabase(object):
                         VALUES(
                             {row['Unique ID']},
                             {guard_discord_id if guard_discord_id else 'NULL'},
-                            '{self.handle_quotes(row['Name of Lifeguard Vigilance Tested (First)'])}',
-                            '{self.handle_quotes(row['Name of Lifeguard Vigilance Tested (Last)'])}',
+                            '{self.handle_quotes(row['Name of Lifeguard Vigilance Tested (First)']).strip()} {self.handle_quotes(row['Name of Lifeguard Vigilance Tested (Last)']).strip()}',
                             {sup_discord_id if sup_discord_id else 'NULL'},
-                            '{self.handle_quotes(row['Who monitored & conducted the vigilance test? (First)'])}',
-                            '{self.handle_quotes(row['Who monitored & conducted the vigilance test? (Last)'])}',
+                            '{self.handle_quotes(row['Who monitored & conducted the vigilance test? (First)']).strip()} {self.handle_quotes(row['Who monitored & conducted the vigilance test? (Last)']).strip()}',
                             '{pool}',
                             '{vat_datetime}',
                             '{self.handle_formstack_datetime(row['Time'])}',
@@ -313,11 +387,11 @@ class YMCADatabase(object):
                         COMMIT;
                     """)
                 except sqlite3.IntegrityError:
-                    pass
                     logging.warning(f"VAT (ID: {row['Unique ID']}) already in table 'vats'")
+                    self.form_tables['vats']['last_id'] = row['Unique ID']
                 else:
-                    pass
                     logging.log(msg=f"VAT (ID: {row['Unique ID']}) inserted into table 'vats'", level=logging.INFO)
+                    self.form_tables['vats']['last_id'] = row['Unique ID']
 
     def select_last_chem(self, pools: List[str]):
         cursor = self.connection.cursor()
