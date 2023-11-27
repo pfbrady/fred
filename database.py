@@ -258,7 +258,7 @@ class YMCADatabase(object):
         return datetime.datetime.strptime(formstack_time, '%b %d, %Y %H:%M %p')
 
     def handle_formstack_datetime(self, formstack_time: str):
-        return datetime.datetime.strptime(formstack_time, '%m/%d/%Y %H:%M')
+        return datetime.datetime.strptime(formstack_time, '%Y-%m-%d %H:%M:%S')
     
     def handle_num_of_guests(self, guests_string: str):
         guests_list = guests_string.split(' ')
@@ -309,7 +309,7 @@ class YMCADatabase(object):
     def load_chems(self) -> None:
         print("load chems")
         cursor = self.connection.cursor()
-        with open('chems_nov_9_2023.csv', newline='') as csvfile:
+        with open('chems.csv', newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 discord_id = self.handle_names(row['Your Name (First)'], row['Your Name (Last)'])
@@ -323,7 +323,7 @@ class YMCADatabase(object):
                             '{self.handle_quotes(row['Your Name (First)']).strip()} {self.handle_quotes(row['Your Name (Last)']).strip()}',
                             '{row['Western']}',
                             '{row['Location of Water Sample, Western']}',
-                            '{self.handle_formstack_datetime(row['Date/Time'])}',
+                            '{self.handle_rss_datetime(row['Date/Time'])}',
                             '{self.handle_formstack_datetime(row['Time'])}',
                             {row['Chlorine']},
                             {row['PH']},
@@ -334,15 +334,15 @@ class YMCADatabase(object):
                     """)
                 except sqlite3.IntegrityError:
                     logging.warning(f"Chem Check (ID: {row['Unique ID']}) already in table 'chem_checks'")
-                    self.form_tables['chem_checks']['last_id'] = row['Unique ID']
+                    self.form_tables['chem_checks']['last_id'] = int(row['Unique ID'])
                 else:
                     logging.log(msg=f"Chem Check (ID: {row['Unique ID']}) inserted into table 'chem_checks'", level=logging.INFO)
-                    self.form_tables['chem_checks']['last_id'] = row['Unique ID']
+                    self.form_tables['chem_checks']['last_id'] = int(row['Unique ID'])
     
     def load_vats(self) -> None:
         print("load vats")
         cursor = self.connection.cursor()
-        with open('vats_nov_2023.csv', newline='') as csvfile:
+        with open('vats.csv', newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
                 guard_discord_id = self.handle_names(
@@ -358,11 +358,12 @@ class YMCADatabase(object):
                 else:
                     pool = row['Which Pool? ']
                 if row['Date & Time of Vigilance Test Conducted']:
-                    vat_datetime = self.handle_formstack_datetime(row['Date & Time of Vigilance Test Conducted'])
+                    vat_datetime = datetime.datetime.strptime(row['Date & Time of Vigilance Test Conducted'],
+                        '%B %d, %Y %H:%M %p')
                 else:
                     vat_datetime = datetime.datetime.strptime(
                         f"{row['Date of Vigilance Test Conducted']} {row['Time of Vigilance Test Conducted ']}",
-                        '%d-%b-%y %H:%M %p'
+                        '%b %d, %Y %H:%M %p'
                     )
                 try:
                     cursor.executescript(f"""
@@ -388,10 +389,10 @@ class YMCADatabase(object):
                     """)
                 except sqlite3.IntegrityError:
                     logging.warning(f"VAT (ID: {row['Unique ID']}) already in table 'vats'")
-                    self.form_tables['vats']['last_id'] = row['Unique ID']
+                    self.form_tables['vats']['last_id'] = int(row['Unique ID'])
                 else:
                     logging.log(msg=f"VAT (ID: {row['Unique ID']}) inserted into table 'vats'", level=logging.INFO)
-                    self.form_tables['vats']['last_id'] = row['Unique ID']
+                    self.form_tables['vats']['last_id'] = int(row['Unique ID'])
 
     def select_last_chem(self, pools: List[str]):
         cursor = self.connection.cursor()
