@@ -121,6 +121,36 @@ def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None,
     
     return selected_employees
 
+def get_open_close_times_today(positions: [W2WPosition]):
+    return get_open_close_times(datetime.datetime.now(), positions)
+
+def get_open_close_times(dt_start: datetime.datetime, positions: [W2WPosition], dt_end: datetime.datetime = None):
+    # Handle date parameters: If only one date passed, sets times equal.
+    start_date = dt_start.strftime("%m/%d/%Y")
+    if dt_end:
+        end_date = dt_end.strftime("%m/%d/%Y")
+    else:
+        end_date = start_date
+        dt_end = dt_start
+
+    # GET request to W2W API
+    req_json = requests.get(f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN}').json()
+
+    w2w_shifts = [W2WShift(shift) for shift in req_json['AssignedShiftList'] if int(shift['POSITION_ID']) in positions]
+    extreme_times = None
+    for w2w_shift in w2w_shifts:
+        if not extreme_times:
+            extreme_times = [w2w_shift.start_datetime, w2w_shift.end_datetime]
+        if w2w_shift.start_datetime < extreme_times[0]:
+            extreme_times[0] = w2w_shift.start_datetime
+        if w2w_shift.end_datetime > extreme_times[1]:
+            extreme_times[1] = w2w_shift.end_datetime
+    return tuple(extreme_times)
+
+            
+        
+    
+
 def get_employees_now(positions: [W2WPosition] = None):
     return get_employees(datetime.datetime.now(), positions=positions)
 

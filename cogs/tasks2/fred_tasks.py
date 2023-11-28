@@ -4,6 +4,7 @@ import get_open_shifts as gos
 import datetime
 import pytz
 import w2w
+import pool as pl
 import cogs.commands2.supervisor.w2w_commands as w2w_comm
 import daxko
 
@@ -39,28 +40,26 @@ class Tasks(commands.Cog):
     #             if channel.name == 'test3':
     #                 await channel.send(f"The last chem check completed was: {self.Fred.database.select_last_chem(['Indoor Pool'])}")
     
-    @tasks.loop(seconds=10.0)
+    @tasks.loop(minutes=10)
     async def update_tables(self):
         updates = self.fred.database.update_tables_rss()
-        open_pools = daxko.get_open_pools()
+        open_pools = [pl.Pool(pool) for pool in daxko.get_open_pools()]
         for pool in open_pools:
             for guild in self.fred.guilds:
                 for channel in guild.text_channels:
                     if channel.name == 'test3':
                         await channel.send(f"Updated Chems/VATs/Opening&Closing: {updates}")
-                        last_chem = self.fred.database.select_last_chem([pool])
-                        if last_chem[0][7] < str(datetime.datetime.now() - datetime.timedelta(hours=2, minutes=30)):
-                            if pool == 'Indoor Pool':
-                                position = 'main'
-                            else:
-                                position = 'complex'
-                            time = 'now'
-                            test = w2w_comm.W2W_Commands('test', 'test', self.fred)
-                            w2w_pos = test.w2wpos_from_default_pos(position, w2w.W2WPosition.GUARDS)
-                            w2w_users = test.w2w_from_default_time(time, w2w_pos)
+                        last_chem = self.fred.database.select_last_chem([pool.name])
+                        now = datetime.datetime.now()
+                        if (last_chem[0][7] < str(now - datetime.timedelta(hours=2, minutes=30))
+                            and now > pool.opening_time + datetime.timedelta(hours=2, minutes=30)
+                            and now < pool.closing_time - datetime.timedelta(minutes=30)
+                        ):
+                            w2w_pos = w2w.w2wpos_from_default_pos(pool.group, w2w.W2WPosition.GUARDS)
+                            w2w_users = w2w.w2w_from_default_time('now', w2w_pos)
                             employees = self.fred.database.select_discord_users(w2w_users)
                             employees_formatted = [f'<@{id}>' for id in employees]
-                            await channel.send(f"Notification: {' '.join(employees_formatted)} Please submit a chemical check for the {pool}.")
+                            await channel.send(f"Notification: {' '.join(employees_formatted)} Please submit a chemical check for the {pool.name}.")
 
     # @tasks.loop(seconds=10.0)
     # async def send_unassigned_shifts(self):
