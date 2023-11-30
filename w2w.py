@@ -279,3 +279,4 @@ def get_assigned_shifts(start_date=None, role=None):
     return '\n'.join(messages)
 
 #print(get_assigned_shifts('10/25/2023', role='lifeguards'))
+#print(w2w_from_default_time('tomorrow-closers', [342888573, 342888572]))

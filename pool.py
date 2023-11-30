@@ -6,7 +6,7 @@ class Pool(object):
     def __init__(self, name):
         if name not in name_options:
             raise ValueError(f"Pool: name must be one of {name_options}")
-        if name == 'Indoor Pool' or '10-Lane Pool':
+        if name == 'Indoor Pool' or name == '10-Lane Pool':
             self.group = 'main'
         else:
             self.group = 'complex'
