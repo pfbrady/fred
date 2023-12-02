@@ -5,16 +5,17 @@ import asyncio
 import cogs.tasks2.fred_tasks
 import cogs.commands2.supervisor.w2w_get_commands as w2w
 import database as db
+import ymca as y
 
 
 class Fred(Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-    
         self.database = None
+        self.ymca = None
 
     async def setup_hook(self) -> None:
-        # pass
+        self.ymca = (y.YMCA('YMCA of Delaware'))
         self.database = db.YMCADatabase()
 
     async def on_ready(self):
