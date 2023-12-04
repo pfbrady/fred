@@ -15,7 +15,7 @@ class Fred(Bot):
         self.ymca = None
 
     async def setup_hook(self) -> None:
-        self.ymca = (y.YMCA('YMCA of Delaware'))
+        self.ymca = y.YMCA('YMCA of Delaware')
         self.database = db.YMCADatabase()
 
     async def on_ready(self):

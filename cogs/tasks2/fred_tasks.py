@@ -23,11 +23,13 @@ class Tasks(commands.Cog):
         self.update_tables.start()
 
     #EVENTS
-    '''
     @commands.Cog.listener()
     async def on_member_join(self, context, member):
-        await context.send(f'Member {member.mention} has joined!')
-    
+        for guild in self.fred.guilds:
+            for channel in guild.text_channels:
+                if channel.name == 'test3':
+                    await context.send(f'Member {member.mention} has joined!')
+    '''
     #TASKS
     @tasks.loop(seconds=10.0)
     async def change_stats(self):
@@ -40,26 +42,29 @@ class Tasks(commands.Cog):
     #             if channel.name == 'test3':
     #                 await channel.send(f"The last chem check completed was: {self.Fred.database.select_last_chem(['Indoor Pool'])}")
     
+
     @tasks.loop(minutes=10)
     async def update_tables(self):
         updates = self.fred.database.update_tables_rss()
-        open_pools = [pl.Pool(pool) for pool in daxko.get_open_pools()]
-        for pool in open_pools:
-            for guild in self.fred.guilds:
-                for channel in guild.text_channels:
-                    if channel.name == 'test3':
-                        await channel.send(f"Updated Chems/VATs/Opening&Closing: {updates}")
-                        last_chem = self.fred.database.select_last_chem([pool.name])
-                        now = datetime.datetime.now()
-                        if (last_chem[0][7] < str(now - datetime.timedelta(hours=2, minutes=30))
-                            and now > pool.opening_time + datetime.timedelta(hours=2, minutes=30)
-                            and now < pool.closing_time - datetime.timedelta(minutes=30)
-                        ):
-                            w2w_pos = w2w.w2wpos_from_default_pos(pool.group, w2w.W2WPosition.GUARDS)
-                            w2w_users = w2w.w2w_from_default_time('now', w2w_pos)
-                            employees = self.fred.database.select_discord_users(w2w_users)
-                            employees_formatted = [f'<@{id}>' for id in employees]
-                            await channel.send(f"Notification: {' '.join(employees_formatted)} Please submit a chemical check for the {pool.name}.")
+        for branch in self.fred.ymca.branches:
+            for pool_group in branch.pool_groups:
+                for pool in pool_group.pools:
+                    if pool.is_open:
+                        for guild in self.fred.guilds:
+                            for channel in guild.text_channels:
+                                if channel.name == 'test3':
+                                    await channel.send(f"Updated Chems/VATs/Opening&Closing: {updates}")
+                                    last_chem = self.fred.database.select_last_chem([pool.name])
+                                    now = datetime.datetime.now()
+                                    if (last_chem[0][7] < str(now - datetime.timedelta(hours=2, minutes=30))
+                                        and now > pool.opening_time + datetime.timedelta(hours=2, minutes=30)
+                                        and now < pool.closing_time - datetime.timedelta(minutes=30)
+                                    ):
+                                        w2w_pos = w2w.w2wpos_from_default_pos(pool_group.name, w2w.W2WPosition.GUARDS)
+                                        w2w_users = w2w.w2w_from_default_time('now', w2w_pos)
+                                        employees = self.fred.database.select_discord_users(w2w_users)
+                                        employees_formatted = [f'<@{id}>' for id in employees]
+                                        await channel.send(f"Notification: {' '.join(employees_formatted)} Please submit a chemical check for the {pool.name}.")
 
     # @tasks.loop(seconds=10.0)
     # async def send_unassigned_shifts(self):

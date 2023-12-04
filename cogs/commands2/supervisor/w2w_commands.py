@@ -37,7 +37,7 @@ class W2W_Commands(discord.app_commands.Group):
     @discord.app_commands.command(description="guards")
     @discord.app_commands.describe(time="The time group which you intend to send a message to. Options are listed above.")
     @discord.app_commands.autocomplete(time=guards_time_auto, position=guards_pos_auto)
-    async def guards(self, interaction:discord.Interaction, time: str, position: str, message: str):
+    async def guards2(self, interaction:discord.Interaction, time: str, position: str, message: str):
         w2w_pos = w2w.w2wpos_from_default_pos(position, w2w.W2WPosition.GUARDS)
         w2w_users = w2w.w2w_from_default_time(time, w2w_pos)
         employees = self.fred.database.select_discord_users(w2w_users)

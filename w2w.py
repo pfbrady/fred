@@ -218,7 +218,7 @@ def w2w_from_default_time(default_time: str, positions: [W2WPosition] = None):
             positions,
             'openers'
         )
-    elif default_time == 'week-openers':
+    elif default_time == 'week-closers':
         return get_employees(
             datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=19, minutes=59), 
             datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=6, hours=23, minutes=59), 
