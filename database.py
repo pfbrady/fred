@@ -125,8 +125,8 @@ class YMCADatabase(object):
                 id PRIMARY KEY, 
                 username, 
                 nickname,
-                w2w_id,
-                pectora_id,
+                w2w_id UNIQUE,
+                pectora_id UNIQUE,
                 FOREIGN KEY(w2w_id) REFERENCES w2w_users(id),
                 FOREIGN KEY(pectora_id) REFERENCES pectora_users(id)
             );
@@ -239,20 +239,29 @@ class YMCADatabase(object):
             return emails.split(",")[0]
         
     def handle_w2w(self, discord_user: DicordUser) -> str:
+        potential_match = ('', 0.5)
+        discord_display_name_split = discord_user.display_name.lower().split(' ', 1)
+        print(discord_display_name_split)
         for w2w_user in self.w2w_users:
-            w2w_name = f"{w2w_user['FIRST_NAME']} {w2w_user['LAST_NAME']}".lower()
-            if SequenceMatcher(None, discord_user.display_name.lower(), w2w_name).ratio() > 0.75:
-                return w2w_user['W2W_EMPLOYEE_ID']
-        return None
+            last_name_match = SequenceMatcher(None, discord_display_name_split[-1], w2w_user['LAST_NAME'].lower()).ratio()
+            first_name_match = SequenceMatcher(None, discord_display_name_split[0], w2w_user['FIRST_NAME'].lower()).ratio()
+            #print(f"{w2w_user['FIRST_NAME']} {w2w_user['LAST_NAME']}, {first_name_match} {last_name_match}")
+            if last_name_match > 0.85 and first_name_match > potential_match[1]:
+                print(discord_user.display_name)
+                potential_match = (w2w_user['W2W_EMPLOYEE_ID'], first_name_match)
+        return potential_match[0]
     
     def handle_names(self, name: str, last_name: str = None) -> str:
-        if last_name:
-            name = f"{name} {last_name}".lower()
+        if not last_name:
+            name, last_name = name.split(' ', 1)
+        potential_match = (0, 0)
         for discord_user in self.discord_users:
-            #print(f'{discord_user.display_name.lower()}: {SequenceMatcher(None, discord_user.display_name.lower(), name.lower()).ratio()}')
-            if SequenceMatcher(None, discord_user.display_name.lower(), name.lower()).ratio() > 0.75:
-                return discord_user.id
-        return None
+            discord_display_name_split = discord_user.display_name.lower().split(' ', 1)
+            last_name_match = SequenceMatcher(None, discord_display_name_split[-1], last_name.lower()).ratio()
+            first_name_match = SequenceMatcher(None, discord_display_name_split[0], name.lower()).ratio()
+            if last_name_match > 0.85 and first_name_match > potential_match[1]:
+                potential_match = (discord_user.id, first_name_match)
+        return potential_match[0]
     
     def handle_rss_datetime(self, formstack_time: str):
         return datetime.datetime.strptime(formstack_time, '%b %d, %Y %H:%M %p')
@@ -444,3 +453,4 @@ class YMCADatabase(object):
 # formstack_time = '2020-06-10 07:05:47'
 # print(datetime.datetime.strptime(formstack_time, '%Y-%m-%d %H:%M:%S'))
 #print(a.select_vats_month(datetime.datetime.now()))
+#print(SequenceMatcher(None, 'christian', 'chris').ratio())

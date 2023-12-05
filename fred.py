@@ -20,8 +20,8 @@ class Fred(Bot):
 
     async def on_ready(self):
         self.database.init_discord_users(self.get_all_members())
-        #self.database.load_chems()
-        #self.database.load_vats()
+        self.database.load_chems()
+        self.database.load_vats()
  
         await self.load_extension("cogs.commands2.supervisor.w2w_commands")
         await self.load_extension("cogs.commands2.supervisor.formstack_commands")
