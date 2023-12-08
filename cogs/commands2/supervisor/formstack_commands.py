@@ -4,12 +4,16 @@ import discord
 import settings
 from discord.ext import commands, tasks
 import w2w
-import fred as fr
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fred import Fred
 
 class Formstack_Commands(discord.app_commands.Group):
     def __init__(self, name, description, fred):
         super().__init__(name=name, description=description)
-        self.fred: fr.Fred = fred
+        self.fred: Fred = fred
         self.chems_default_pools = ['all', 'complex', 'main', '10-lane', '8-lane', 'family', 'indoor']
         self.chems_pools_dict = {
             'all': ['10-Lane Pool', 'Complex Lap Pool', 'Complex Family Pool', 'Indoor Pool'],
@@ -61,7 +65,7 @@ class Formstack_Commands(discord.app_commands.Group):
 
         vats_by_guard = {}
         for guard in self.fred.database.discord_users:
-            if interaction.guild.get_role(settings.LIFEGUARD_ROLE_ID) in guard.roles:
+            if interaction.guild.get_role(settings.LIFEGUARD_ROLE_ID_007) in guard.roles:
                 vats_by_guard[guard.id] = 0
 
         # Adding the number of VATs to each guards total
@@ -84,5 +88,5 @@ class Formstack_Commands(discord.app_commands.Group):
         vats_incomplete_formatted = [f'Guard: <@{vat}>: {vbg_incomplete.get(vat)}\n' for vat in vbg_incomplete]
         await interaction.response.send_message(f"# Summary of VATs ({now.strftime('%B %Y')}):\n{''.join(vats_complete_formatted)}# --------------------\n{''.join(vats_incomplete_formatted)}", ephemeral=True)
 
-async def setup(Fred):
-    Fred.tree.add_command(Formstack_Commands(name="form", description="test", fred=Fred))
+async def setup(fred):
+    fred.tree.add_command(Formstack_Commands(name="form", description="test", fred=fred))

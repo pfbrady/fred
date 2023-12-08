@@ -68,7 +68,7 @@ def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None,
         dt_end = dt_start
 
     # GET request to W2W API
-    req_json = requests.get(f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN}').json()
+    req_json = requests.get(f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN_007}').json()
     
     # Handle position parameter. If nothing passes in, defaults to all postions.
     if not positions:
@@ -134,7 +134,7 @@ def get_open_close_times(dt_start: datetime.datetime, positions: [W2WPosition], 
         dt_end = dt_start
 
     # GET request to W2W API
-    req_json = requests.get(f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN}').json()
+    req_json = requests.get(f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN_007}').json()
 
     w2w_shifts = [W2WShift(shift) for shift in req_json['AssignedShiftList'] if int(shift['POSITION_ID']) in positions]
     extreme_times = None
@@ -251,7 +251,7 @@ def get_assigned_shifts(start_date=None, role=None):
     start_date = tomorrow if start_date == 'tomorrow' else today if start_date == 'today' else start_date
     end_date = start_date
 
-    api_url_shifts = f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN}'
+    api_url_shifts = f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN_007}'
     req_json_shifts = requests.get(api_url_shifts).json()['AssignedShiftList']
 
     lifeguard_data = [item for item in req_json_shifts if item.get('POSITION_NAME', '').lower().find('lifeguard') != -1]

@@ -3,12 +3,16 @@ import typing
 import discord
 from discord.ext import commands, tasks
 import w2w
-import fred as fr
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fred import Fred
 
 class W2W_Commands(discord.app_commands.Group):
     def __init__(self, name, description, fred):
         super().__init__(name=name, description=description)
-        self.fred: fr.Fred = fred
+        self.fred: Fred = fred
         self.guards_default_times = ['now', 'earlier-today', 'later-today', 'today', 'today-closers', 'tomorrow', 'tomorrow-openers', 'tomorrow-closers', 'week', 'week-openers', 'week-closers']
         self.guards_default_pos = ['all', 'complex', 'main']
         self.instructors_default_times = ['earlier-today', 'later-today', 'today', 'tomorrow', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
@@ -68,5 +72,5 @@ class W2W_Commands(discord.app_commands.Group):
         employees_formatted = [f'<@{id}>' for id in employees]
         await interaction.response.send_message(f"__Notification__: {' '.join(employees_formatted)}: {message}.", ephemeral=True)
 
-async def setup(Fred):
-    Fred.tree.add_command(W2W_Commands(name="w2w", description="test", fred=Fred))
+async def setup(fred):
+    fred.tree.add_command(W2W_Commands(name="w2w", description="test", fred=fred))

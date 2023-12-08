@@ -7,6 +7,10 @@ import w2w
 import pool as pl
 import cogs.commands2.supervisor.w2w_commands as w2w_comm
 import daxko
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fred import Fred
 
 
 from itertools import cycle
@@ -17,7 +21,7 @@ class Tasks(commands.Cog):
 
 
     def __init__(self, fred):
-        self.fred = fred
+        self.fred: Fred = fred
         #self.send_unassigned_shifts.start()
         #self.send_last_chem.start()
         self.update_tables.start()

@@ -56,7 +56,7 @@ def run():
 
     handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
 
-    client.run(token=settings.DISCORD_TOKEN, log_handler=handler)
+    client.run(token=settings.DISCORD_TOKEN_007, log_handler=handler)
 
 
 
@@ -64,4 +64,4 @@ def run():
 if __name__ == "__main__":
     bot_instance = Fred(client)
     client.loop.create_task(bot_instance.on_ready())
-    client.run(settings.DISCORD_TOKEN)
+    client.run(settings.DISCORD_TOKEN_007)

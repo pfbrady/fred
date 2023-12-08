@@ -4,6 +4,7 @@ import datetime
 import time
 import settings
 
+
 class FormstackHTMLParser(HTMLParser):
     def __init__(self):
         HTMLParser.__init__(self)
@@ -44,4 +45,4 @@ def form_rss_to_dict(link: str):
     parsed_entries.reverse()
     return parsed_entries
 
-#print(form_rss_to_dict(settings.FORM_CHEMS_RSS)[-1])
+#print(form_rss_to_dict(settings.VATS_RSS_007)[-1])

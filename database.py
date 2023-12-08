@@ -22,13 +22,13 @@ class YMCADatabase(object):
                 logging.warning(f"Error: Connection to database 'ymca_aquatics.db' not established {e}")
             else:
                 logging.log(msg="Connection to database 'ymca_aquatics.db' established", level=logging.INFO)
-                self.w2w_users = []
-                self.discord_users = []
+                self.w2w_users = {key:[] for key in settings.SETTINGS_DICT.keys()}
+                self.discord_users = {key:[] for key in settings.SETTINGS_DICT.keys()}
                 self.init_tables()
                 self.init_w2w_users()
-                self.form_tables = {'chem_checks': {'last_id': 0, 'rss': settings.FORM_CHEMS_RSS}, 
-                      'vats': {'last_id': 0, 'rss': settings.FORM_VATS_RSS},
-                      'opening_closing': {'last_id': 0, 'rss': settings.FORM_OPENING_CLOSING_RSS}
+                self.form_tables = {'chem_checks': {'last_id': 0, 'rss': settings.CHEMS_RSS_007}, 
+                      'vats': {'last_id': 0, 'rss': settings.VATS_RSS_007},
+                      'opening_closing': {'last_id': 0, 'rss': settings.OC_RSS_007}
                     }
     def update_tables_rss(self):
         num_of_updates = {}
@@ -46,7 +46,7 @@ class YMCADatabase(object):
     def insert_entry_rss(self, entry_dict: dict, table: str):
         cursor = self.connection.cursor()
         if table == 'chem_checks':
-            discord_id = self.handle_names(entry_dict['Your Name'])
+            discord_id = self.handle_names('007', entry_dict['Your Name'])
             try:
                 cursor.executescript(f"""
                     BEGIN;
@@ -55,6 +55,7 @@ class YMCADatabase(object):
                         {entry_dict['Unique ID']},
                         {discord_id if discord_id else 'NULL'},
                         '{self.handle_quotes(entry_dict['Your Name'])}',
+                        '{self.handle_branch(entry_dict['Branch'])}',
                         '{entry_dict['Western']}',
                         '{entry_dict['Location of Water Sample, Western']}',
                         '{self.handle_rss_datetime(entry_dict['Date/Time'])}',
@@ -71,8 +72,8 @@ class YMCADatabase(object):
             else:
                 logging.log(msg=f"Chem Check (ID: {entry_dict['Unique ID']}) inserted into table 'chem_checks'", level=logging.INFO)
         elif table == 'vats':
-            guard_discord_id = self.handle_names(entry_dict['Name of Lifeguard Vigilance Tested'])
-            sup_discord_id = self.handle_names(entry_dict['Who monitored & conducted the vigilance test?'])
+            guard_discord_id = self.handle_names('007', entry_dict['Name of Lifeguard Vigilance Tested'])
+            sup_discord_id = self.handle_names('007', entry_dict['Who monitored & conducted the vigilance test?'])
             try:
                 cursor.executescript(f"""
                     BEGIN;
@@ -83,6 +84,7 @@ class YMCADatabase(object):
                         '{self.handle_quotes(entry_dict['Name of Lifeguard Vigilance Tested'])}',
                         {sup_discord_id if sup_discord_id else 'NULL'},
                         '{self.handle_quotes(entry_dict['Who monitored & conducted the vigilance test?'])}',
+                        '{self.handle_branch(entry_dict['YMCA of Delaware Branch'])}',
                         '{entry_dict['Which Pool? ']}',
                         '{self.handle_rss_datetime(f"{entry_dict['Date of Vigilance Test Conducted']} {entry_dict['Time of Vigilance Test Conducted ']}")}',
                         '{entry_dict['Time']}',
@@ -107,26 +109,38 @@ class YMCADatabase(object):
         cursor = self.connection.cursor()
         cursor.executescript("""
             BEGIN;
+            CREATE TABLE IF NOT EXISTS branches(
+                id PRIMARY KEY,
+                name,
+                aquatic_director_discord_id,
+                FOREIGN KEY(aquatic_director_discord_id) REFERENCES discord_users(id)
+            );
             CREATE TABLE IF NOT EXISTS w2w_users(
                 id PRIMARY KEY,
                 first_name,
                 last_name,
+                branch_id,
                 email,
-                cert_expiration_date
+                cert_expiration_date,
+                FOREIGN KEY(branch_id) REFERENCES branches(id)
             );
             CREATE TABLE IF NOT EXISTS pectora_users(
                 id PRIMARY KEY,
                 first_name,
                 last_name,
+                branch_id,
                 email,
-                cert_expiration_date
+                cert_expiration_date,
+                FOREIGN KEY(branch_id) REFERENCES branches(id)
             );
             CREATE TABLE IF NOT EXISTS discord_users(
                 id PRIMARY KEY, 
                 username, 
                 nickname,
+                branch_id,
                 w2w_id UNIQUE,
                 pectora_id UNIQUE,
+                FOREIGN KEY(branch_id) REFERENCES branches(id)
                 FOREIGN KEY(w2w_id) REFERENCES w2w_users(id),
                 FOREIGN KEY(pectora_id) REFERENCES pectora_users(id)
             );
@@ -134,6 +148,7 @@ class YMCADatabase(object):
                 chem_uuid PRIMARY KEY,
                 discord_id,
                 name,
+                branch_id,
                 pool,
                 sample_location,
                 sample_time,
@@ -142,7 +157,8 @@ class YMCADatabase(object):
                 ph,
                 water_temp,
                 num_of_swimmers,
-                FOREIGN KEY(discord_id) REFERENCES discord_users(id)
+                FOREIGN KEY(discord_id) REFERENCES discord_users(id),
+                FOREIGN KEY(branch_id) REFERENCES branches(id)
             );
             CREATE TABLE IF NOT EXISTS vats(
                 vat_uuid PRIMARY KEY,
@@ -150,6 +166,7 @@ class YMCADatabase(object):
                 guard_name,
                 sup_discord_id,
                 sup_name,
+                branch_id,
                 pool,
                 vat_time,
                 submit_time,
@@ -160,42 +177,86 @@ class YMCADatabase(object):
                 pass,
                 response_time,
                 FOREIGN KEY(guard_discord_id) REFERENCES discord_users(id),
-                FOREIGN KEY(sup_discord_id) REFERENCES discord_users(id)
+                FOREIGN KEY(sup_discord_id) REFERENCES discord_users(id),
+                FOREIGN KEY(branch_id) REFERENCES branches(id)
+            );
+            CREATE TABLE IF NOT EXISTS opening_checklists(
+                oc_uuid PRIMARY KEY,
+                discord_id,
+                name,
+                branch_id,
+                pool,
+                opening_time,
+                submit_time,
+                regulatory_info,
+                aed_info,
+                adult_pads_expiration_date,
+                pediatric_pads_expiration_date,
+                aspirin_expiration_date,
+                sup_oxygen_info,
+                sup_oxygen_psi,
+                first_aid_info,
+                chlorine,
+                ph,
+                water_temp,
+                lights_function,
+                handicap_chair_function,
+                spare_battery_present,
+                vacuum_present,
+                FOREIGN KEY(discord_id) REFERENCES discord_users(id),
+                FOREIGN KEY(branch_id) REFERENCES branches(id)
+            );
+            CREATE TABLE IF NOT EXISTS closing_checklists(
+                oc_uuid PRIMARY KEY,
+                discord_id,
+                name,
+                branch_id,
+                pool,
+                closing_time,
+                submit_time,
+                regulatory_info,
+                chlorine,
+                ph,
+                water_temp,
+                lights_function,
+                vacuum_present,
+                FOREIGN KEY(discord_id) REFERENCES discord_users(id),
+                FOREIGN KEY(branch_id) REFERENCES branches(id)
             );
             COMMIT;
         """)
 
     def init_w2w_users(self):
         cursor = self.connection.cursor()
-        req = requests.get(f"https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/EmployeeList?key={settings.W2W_TOKEN}")
-        req_json = req.json()
-        for employee in req_json['EmployeeList']:
-            self.w2w_users.append(employee)
-            try:
-                cursor.executescript(f"""
-                    BEGIN;
-                    INSERT INTO w2w_users
-                    VALUES(
-                        {employee['W2W_EMPLOYEE_ID']},
-                        '{employee['FIRST_NAME']}',
-                        '{employee['LAST_NAME']}',
-                        '{self.handle_emails(employee['EMAILS'])}',
-                        '{employee['CUSTOM_2']}'
-                    );
-                    COMMIT;
-                """)
-            except sqlite3.IntegrityError:
-                pass
-                #logging.warning(f"W2W Employee {employee['FIRST_NAME']} {employee['LAST_NAME']} (ID: {employee['W2W_EMPLOYEE_ID']}) already in table 'w2w_users'")
-            else:
-                pass
-                #logging.log(msg=f"W2W Employee {employee['FIRST_NAME']} {employee['LAST_NAME']} (ID: {employee['W2W_EMPLOYEE_ID']}) inserted into table 'w2w.users'", level=logging.INFO)
+        for branch_id, branch_info in settings.SETTINGS_DICT.items():
+            req = requests.get(f"https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/EmployeeList?key={branch_info['W2W_TOKEN']}")
+            req_json = req.json()
+            for employee in req_json['EmployeeList']:
+                self.w2w_users[branch_id].append(employee)
+                try:
+                    cursor.executescript(f"""
+                        BEGIN;
+                        INSERT INTO w2w_users
+                        VALUES(
+                            {employee['W2W_EMPLOYEE_ID']},
+                            '{employee['FIRST_NAME']}',
+                            '{employee['LAST_NAME']}',
+                            '{branch_id}',
+                            '{self.handle_emails(employee['EMAILS'])}',
+                            '{employee['CUSTOM_2']}'
+                        );
+                        COMMIT;
+                    """)
+                except sqlite3.IntegrityError:
+                    logging.warning(f"W2W Employee {employee['FIRST_NAME']} {employee['LAST_NAME']} (ID: {employee['W2W_EMPLOYEE_ID']}) already in table 'w2w_users'")
+                else:
+                    logging.log(msg=f"W2W Employee {employee['FIRST_NAME']} {employee['LAST_NAME']} (ID: {employee['W2W_EMPLOYEE_ID']}) inserted into table 'w2w.users'", level=logging.INFO)
     
-    def init_discord_users(self, users: List) -> None:
+    def init_discord_users(self, users: List, branch_id: str) -> None:
         cursor = self.connection.cursor()
         for user in users:
-            self.discord_users.append(user)
-            w2w_id = self.handle_w2w(user)
+            self.discord_users[branch_id].append(user)
+            w2w_id = self.handle_w2w(user, branch_id)
             try:
                 cursor.executescript(f"""
                     BEGIN;
@@ -204,6 +265,7 @@ class YMCADatabase(object):
                         {user.id},
                         '{user.name}',
                         '{user.display_name}',
+                        '{branch_id}',
                         {w2w_id if w2w_id else 'NULL'},
                         NULL
                     );
@@ -238,11 +300,10 @@ class YMCADatabase(object):
         else:
             return emails.split(",")[0]
         
-    def handle_w2w(self, discord_user: DicordUser) -> str:
+    def handle_w2w(self, discord_user: DicordUser, branch_id: str) -> str:
         potential_match = ('', 0.5)
         discord_display_name_split = discord_user.display_name.lower().split(' ', 1)
-        print(discord_display_name_split)
-        for w2w_user in self.w2w_users:
+        for w2w_user in self.w2w_users[branch_id]:
             last_name_match = SequenceMatcher(None, discord_display_name_split[-1], w2w_user['LAST_NAME'].lower()).ratio()
             first_name_match = SequenceMatcher(None, discord_display_name_split[0], w2w_user['FIRST_NAME'].lower()).ratio()
             #print(f"{w2w_user['FIRST_NAME']} {w2w_user['LAST_NAME']}, {first_name_match} {last_name_match}")
@@ -251,11 +312,11 @@ class YMCADatabase(object):
                 potential_match = (w2w_user['W2W_EMPLOYEE_ID'], first_name_match)
         return potential_match[0]
     
-    def handle_names(self, name: str, last_name: str = None) -> str:
+    def handle_names(self, branch_id: str, name: str, last_name: str = None) -> str:
         if not last_name:
             name, last_name = name.split(' ', 1)
         potential_match = (0, 0)
-        for discord_user in self.discord_users:
+        for discord_user in self.discord_users[branch_id]:
             discord_display_name_split = discord_user.display_name.lower().split(' ', 1)
             last_name_match = SequenceMatcher(None, discord_display_name_split[-1], last_name.lower()).ratio()
             first_name_match = SequenceMatcher(None, discord_display_name_split[0], name.lower()).ratio()
@@ -314,6 +375,9 @@ class YMCADatabase(object):
             return "''".join(name.split("'"))
         else:
             return name
+        
+    def handle_branch(self, branch: str):
+        return '007'
 
     def load_chems(self) -> None:
         print("load chems")
@@ -321,7 +385,7 @@ class YMCADatabase(object):
         with open('chems.csv', newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
-                discord_id = self.handle_names(row['Your Name (First)'], row['Your Name (Last)'])
+                discord_id = self.handle_names('007', row['Your Name (First)'], row['Your Name (Last)'])
                 try:
                     cursor.executescript(f"""
                         BEGIN;
@@ -330,6 +394,7 @@ class YMCADatabase(object):
                             {row['Unique ID']},
                             {discord_id if discord_id else 'NULL'},
                             '{self.handle_quotes(row['Your Name (First)']).strip()} {self.handle_quotes(row['Your Name (Last)']).strip()}',
+                            '{self.handle_branch(row['Branch'])}',
                             '{row['Western']}',
                             '{row['Location of Water Sample, Western']}',
                             '{self.handle_rss_datetime(row['Date/Time'])}',
@@ -355,10 +420,12 @@ class YMCADatabase(object):
             reader = csv.DictReader(csvfile)
             for row in reader:
                 guard_discord_id = self.handle_names(
+                    '007',
                     row['Name of Lifeguard Vigilance Tested (First)'],
                     row['Name of Lifeguard Vigilance Tested (Last)']
                 )
                 sup_discord_id = self.handle_names(
+                    '007',
                     row['Who monitored & conducted the vigilance test? (First)'],
                     row['Who monitored & conducted the vigilance test? (Last)']
                 )
@@ -384,6 +451,7 @@ class YMCADatabase(object):
                             '{self.handle_quotes(row['Name of Lifeguard Vigilance Tested (First)']).strip()} {self.handle_quotes(row['Name of Lifeguard Vigilance Tested (Last)']).strip()}',
                             {sup_discord_id if sup_discord_id else 'NULL'},
                             '{self.handle_quotes(row['Who monitored & conducted the vigilance test? (First)']).strip()} {self.handle_quotes(row['Who monitored & conducted the vigilance test? (Last)']).strip()}',
+                            '{self.handle_branch(row['YMCA of Delaware Branch'])}',
                             '{pool}',
                             '{vat_datetime}',
                             '{self.handle_formstack_datetime(row['Time'])}',
@@ -402,6 +470,64 @@ class YMCADatabase(object):
                 else:
                     logging.log(msg=f"VAT (ID: {row['Unique ID']}) inserted into table 'vats'", level=logging.INFO)
                     self.form_tables['vats']['last_id'] = int(row['Unique ID'])
+    '''
+    def load_oc(self) -> None:
+        print("load oc")
+        cursor = self.connection.cursor()
+        with open('oc.csv', newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                guard_discord_id = self.handle_names(
+                    '007',
+                    row['Name of the individual completing the inspection (First)'],
+                    row['Name of the individual completing the inspection (First)']
+                )
+                sup_discord_id = self.handle_names(
+                    '007',
+                    row['Who monitored & conducted the vigilance test? (First)'],
+                    row['Who monitored & conducted the vigilance test? (Last)']
+                )
+                if row['Which Pool? - Western']:
+                    pool = row['Which Pool? - Western']
+                else:
+                    pool = row['Which Pool? ']
+                if row['Date & Time of Vigilance Test Conducted']:
+                    vat_datetime = datetime.datetime.strptime(row['Date & Time of Vigilance Test Conducted'],
+                        '%B %d, %Y %H:%M %p')
+                else:
+                    vat_datetime = datetime.datetime.strptime(
+                        f"{row['Date of Vigilance Test Conducted']} {row['Time of Vigilance Test Conducted ']}",
+                        '%b %d, %Y %H:%M %p'
+                    )
+                try:
+                    cursor.executescript(f"""
+                        BEGIN;
+                        INSERT INTO oc_007
+                        VALUES(
+                            {row['Unique ID']},
+                            {guard_discord_id if guard_discord_id else 'NULL'},
+                            '{self.handle_quotes(row['Name of the individual completing the inspection (First)']).strip()} {self.handle_quotes(row['Name of the individual completing the inspection (First)']).strip()}',
+                            {sup_discord_id if sup_discord_id else 'NULL'},
+                            '{self.handle_quotes(row['Who monitored & conducted the vigilance test? (First)']).strip()} {self.handle_quotes(row['Who monitored & conducted the vigilance test? (Last)']).strip()}',
+                            '{pool}',
+                            '{vat_datetime}',
+                            '{self.handle_formstack_datetime(row['Time'])}',
+                            '{self.handle_num_of_guests(row['How many guests do you believe were in the pool?'])}',
+                            '{self.handle_num_of_guards(row['Were they the only lifeguard watching the pool?'])}',
+                            '{row['What type of stimuli was used?']}',
+                            '{self.handle_depth(row['What was the water depth where the stimuli was placed?'])}',
+                            '{self.handle_pass(row['Did the lifeguard being vigilance tested respond to the stimuli?'])}',
+                            '{self.handle_response_time(row['Did the lifeguard being vigilance tested respond to the stimuli?'])}'
+                        );
+                        COMMIT;
+                    """)
+                except sqlite3.IntegrityError:
+                    logging.warning(f"VAT (ID: {row['Unique ID']}) already in table 'vats'")
+                    self.form_tables['vats']['last_id'] = int(row['Unique ID'])
+                else:
+                    logging.log(msg=f"VAT (ID: {row['Unique ID']}) inserted into table 'vats'", level=logging.INFO)
+                    self.form_tables['vats']['last_id'] = int(row['Unique ID'])
+    '''
 
     def select_last_chem(self, pools: List[str]):
         cursor = self.connection.cursor()

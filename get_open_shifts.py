@@ -9,7 +9,7 @@ def open_shifts():
     tomorrow = tomorrow.strftime("%m/%d/%Y")
 
     req = requests.get('https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/DailyPositionTotals?start_date=' + 
-                    tomorrow + '&end_date=' + tomorrow + '&key=' + settings.W2W_TOKEN)
+                    tomorrow + '&end_date=' + tomorrow + '&key=' + settings.W2W_TOKEN_007)
 
     req_json = req.json() 
     #print(req_json['DailyPositionTotals'])
