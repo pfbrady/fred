@@ -58,6 +58,9 @@ cover/
 # Formstack csv exports:
 *.csv
 
+# YMCA JSON Data
+ymca.json
+
 # Sqlite stuff:
 *.db
 
