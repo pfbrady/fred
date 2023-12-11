@@ -22,10 +22,11 @@ class YMCADatabase(object):
                 logging.warning(f"Error: Connection to database 'ymca_aquatics.db' not established {e}")
             else:
                 logging.log(msg="Connection to database 'ymca_aquatics.db' established", level=logging.INFO)
-                self.w2w_users = {key:[] for key in settings.SETTINGS_DICT.keys()}
-                self.discord_users = {key:[] for key in settings.SETTINGS_DICT.keys()}
+                self.w2w_users = {key:[] for key in settings.SETTINGS_DICT['branches'].keys()}
+                self.discord_users = {key:[] for key in settings.SETTINGS_DICT['branches'].keys()}
                 self.init_tables()
-                self.init_w2w_users()
+                self.init_branches()
+                #self.init_w2w_users()
                 self.form_tables = {'chem_checks': {'last_id': 0, 'rss': settings.CHEMS_RSS_007}, 
                       'vats': {'last_id': 0, 'rss': settings.VATS_RSS_007},
                       'opening_closing': {'last_id': 0, 'rss': settings.OC_RSS_007}
@@ -111,38 +112,50 @@ class YMCADatabase(object):
             BEGIN;
             CREATE TABLE IF NOT EXISTS branches(
                 id PRIMARY KEY,
-                name,
-                aquatic_director_discord_id,
-                FOREIGN KEY(aquatic_director_discord_id) REFERENCES discord_users(id)
-            );
-            CREATE TABLE IF NOT EXISTS w2w_users(
-                id PRIMARY KEY,
-                first_name,
-                last_name,
-                branch_id,
-                email,
-                cert_expiration_date,
-                FOREIGN KEY(branch_id) REFERENCES branches(id)
-            );
-            CREATE TABLE IF NOT EXISTS pectora_users(
-                id PRIMARY KEY,
-                first_name,
-                last_name,
-                branch_id,
-                email,
-                cert_expiration_date,
-                FOREIGN KEY(branch_id) REFERENCES branches(id)
+                name
             );
             CREATE TABLE IF NOT EXISTS discord_users(
                 id PRIMARY KEY, 
                 username, 
                 nickname,
                 branch_id,
-                w2w_id UNIQUE,
-                pectora_id UNIQUE,
                 FOREIGN KEY(branch_id) REFERENCES branches(id)
-                FOREIGN KEY(w2w_id) REFERENCES w2w_users(id),
-                FOREIGN KEY(pectora_id) REFERENCES pectora_users(id)
+            );
+            CREATE TABLE IF NOT EXISTS aquatic_directors(
+                id PRIMARY KEY,
+                discord_id UNIQUE,
+                branch_id UNIQUE,
+                FOREIGN KEY(discord_id) REFERENCES discord_users(id),
+                FOREIGN KEY(branch_id) REFERENCES branches(id)
+            );
+            CREATE TABLE IF NOT EXISTS aquatic_specialists(
+                id PRIMARY KEY,
+                discord_id UNIQUE,
+                branch_id UNIQUE,
+                FOREIGN KEY(discord_id) REFERENCES discord_users(id),
+                FOREIGN KEY(branch_id) REFERENCES branches(id)
+            );
+            CREATE TABLE IF NOT EXISTS w2w_users(
+                id PRIMARY KEY,
+                discord_id UNIQUE,
+                first_name,
+                last_name,
+                branch_id,
+                email,
+                cert_expiration_date,
+                FOREIGN KEY(discord_id) REFERENCES discord_users(id),
+                FOREIGN KEY(branch_id) REFERENCES branches(id)
+            );
+            CREATE TABLE IF NOT EXISTS pectora_users(
+                id PRIMARY KEY,
+                discord_id UNIQUE,
+                first_name,
+                last_name,
+                branch_id,
+                email,
+                cert_expiration_date,
+                FOREIGN KEY(discord_id) REFERENCES discord_users(id),
+                FOREIGN KEY(branch_id) REFERENCES branches(id)
             );
             CREATE TABLE IF NOT EXISTS chem_checks(
                 chem_uuid PRIMARY KEY,
@@ -182,7 +195,7 @@ class YMCADatabase(object):
             );
             CREATE TABLE IF NOT EXISTS opening_checklists(
                 oc_uuid PRIMARY KEY,
-                discord_id,
+                discord_id UNIQUE,
                 name,
                 branch_id,
                 pool,
@@ -208,7 +221,7 @@ class YMCADatabase(object):
             );
             CREATE TABLE IF NOT EXISTS closing_checklists(
                 oc_uuid PRIMARY KEY,
-                discord_id,
+                discord_id UNIQUE,
                 name,
                 branch_id,
                 pool,
@@ -225,23 +238,51 @@ class YMCADatabase(object):
             );
             COMMIT;
         """)
-
-    def init_w2w_users(self):
+    def init_branches(self):
         cursor = self.connection.cursor()
-        for branch_id, branch_info in settings.SETTINGS_DICT.items():
-            req = requests.get(f"https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/EmployeeList?key={branch_info['W2W_TOKEN']}")
-            req_json = req.json()
+        for branch_id, branch_info in settings.SETTINGS_DICT['branches'].items():
+            try:
+                cursor.executescript(f"""
+                    BEGIN;
+                    INSERT INTO branches
+                    VALUES(
+                        {branch_id},
+                        '{branch_info['name']}'
+                    );
+                    COMMIT;
+                """)
+            except sqlite3.IntegrityError:
+                logging.warning(f"Branch (ID: {branch_id}) already in table 'branches'")
+            else:
+                logging.log(msg=f"Branch (ID: {branch_id}) inserted into table 'branches'", level=logging.INFO)
+
+    def check_w2w_connection(self, branch_id, branch_info):
+        print(branch_info)
+        try:
+            req = requests.get(f"https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/EmployeeList?key={branch_info['w2w_token']}")
+        except KeyError:
+            logging.warning(f"Branch (ID: {branch_id}) does not have W2W connected.")
+            return None
+        else:
+            return req.json()
+
+    def init_w2w_users(self, branch_id):
+        cursor = self.connection.cursor()
+        req_json = self.check_w2w_connection(branch_id, settings.SETTINGS_DICT['branches'][branch_id])
+        if req_json:
             for employee in req_json['EmployeeList']:
                 self.w2w_users[branch_id].append(employee)
+                discord_id = self.handle_names(branch_id, employee['FIRST_NAME'], employee['LAST_NAME'])
                 try:
                     cursor.executescript(f"""
                         BEGIN;
                         INSERT INTO w2w_users
                         VALUES(
                             {employee['W2W_EMPLOYEE_ID']},
+                            {discord_id if discord_id else 'NULL'},
                             '{employee['FIRST_NAME']}',
                             '{employee['LAST_NAME']}',
-                            '{branch_id}',
+                            '{branch_id if branch_id else 'NULL'}',
                             '{self.handle_emails(employee['EMAILS'])}',
                             '{employee['CUSTOM_2']}'
                         );
@@ -250,13 +291,12 @@ class YMCADatabase(object):
                 except sqlite3.IntegrityError:
                     logging.warning(f"W2W Employee {employee['FIRST_NAME']} {employee['LAST_NAME']} (ID: {employee['W2W_EMPLOYEE_ID']}) already in table 'w2w_users'")
                 else:
-                    logging.log(msg=f"W2W Employee {employee['FIRST_NAME']} {employee['LAST_NAME']} (ID: {employee['W2W_EMPLOYEE_ID']}) inserted into table 'w2w.users'", level=logging.INFO)
+                    logging.log(msg=f"W2W Employee {employee['FIRST_NAME']} {employee['LAST_NAME']} (ID: {employee['W2W_EMPLOYEE_ID']}) inserted into table 'w2w_users'", level=logging.INFO)
     
     def init_discord_users(self, users: List, branch_id: str) -> None:
         cursor = self.connection.cursor()
         for user in users:
             self.discord_users[branch_id].append(user)
-            w2w_id = self.handle_w2w(user, branch_id)
             try:
                 cursor.executescript(f"""
                     BEGIN;
@@ -265,9 +305,7 @@ class YMCADatabase(object):
                         {user.id},
                         '{user.name}',
                         '{user.display_name}',
-                        '{branch_id}',
-                        {w2w_id if w2w_id else 'NULL'},
-                        NULL
+                        '{branch_id}'
                     );
                     COMMIT;
                 """)
@@ -282,8 +320,10 @@ class YMCADatabase(object):
         cursor = self.connection.cursor()
         try:
             cursor.execute(f"""
-                SELECT id FROM discord_users
-                WHERE w2w_id IN ({','.join(str(id) for id in users)})
+                SELECT discord_users.id FROM discord_users
+                INNER JOIN w2w_users
+                ON discord_users.id = w2w_users.discord_id
+                WHERE w2w_users.id IN ({','.join(str(id) for id in users)})
             """)
         except Exception as e:
             print(e)
@@ -529,16 +569,15 @@ class YMCADatabase(object):
                     self.form_tables['vats']['last_id'] = int(row['Unique ID'])
     '''
 
-    def select_last_chem(self, pools: List[str]):
+    def select_last_chem(self, pools: List[str], branch_id: str):
         cursor = self.connection.cursor()
         chems = []
         for pool in pools:
             try:
                 cursor.execute(f"""
-                    SELECT discord_users.id, chem.chem_uuid, chem.pool, chem.chlorine, chem.ph, chem.water_temp, chem.num_of_swimmers, MAX(chem.sample_time)
-                    FROM (SELECT * FROM chem_checks WHERE pool = '{pool}') AS chem
-                    INNER JOIN discord_users
-                    ON chem.discord_id = discord_users.id;
+                    SELECT discord_id, chem_uuid, pool, chlorine, ph, water_temp, num_of_swimmers, MAX(sample_time)
+                    FROM chem_checks
+                    WHERE pool = '{pool}' AND branch_id = '{branch_id}';
                 """)
             except Exception as e:
                 print(e)
@@ -546,25 +585,26 @@ class YMCADatabase(object):
                 chems.append(cursor.fetchone())
         return chems
 
-    def select_last_vat(self):
+    def select_last_vat(self, branch_id):
         cursor = self.connection.cursor()
         try:
             cursor.execute(f"""
                 SELECT guard_discord_id, sup_discord_id, vat_uuid, pool, num_of_swimmers, num_of_guards, stimuli, pass, response_time, MAX(vat_time)
                 FROM vats
+                WHERE branch_id = '{branch_id}';
             """)
         except Exception as e:
             print(e)
         else:
             return [cursor.fetchone()]
         
-    def select_vats_month(self, dt_now: datetime.datetime):
+    def select_vats_month(self, dt_now: datetime.datetime, branch_id):
         cursor = self.connection.cursor()
         try:
             cursor.execute(f"""
                 SELECT guard_discord_id, sup_discord_id, vat_uuid, pool, num_of_swimmers, num_of_guards, stimuli, pass, response_time, vat_time
                 FROM vats
-                WHERE vat_time > '{datetime.datetime(dt_now.year, dt_now.month, 1)}';
+                WHERE vat_time > '{datetime.datetime(dt_now.year, dt_now.month, 1)}' AND branch_id = '{branch_id}';
             """)
         except Exception as e:
             print(e)

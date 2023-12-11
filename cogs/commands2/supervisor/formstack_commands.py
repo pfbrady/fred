@@ -47,13 +47,19 @@ class Formstack_Commands(discord.app_commands.Group):
     @discord.app_commands.describe(pool="Specific pool location. Options are listed above.")
     @discord.app_commands.autocomplete(pool=chems_pool_auto)
     async def chems(self, interaction:discord.Interaction, pool: str):
-        chems = self.fred.database.select_last_chem(self.chems_pools_dict[pool])
+        for branch_id, branch_info in settings.SETTINGS_DICT['branches'].items():
+            if interaction.guild.id == branch_info['guild_id']:
+                interaction_branch_id = branch_id
+        chems = self.fred.database.select_last_chem(self.chems_pools_dict[pool], interaction_branch_id)
         chems_formatted = [f'Name: <@{chem[0]}>\n Chem Check ID: {chem[1]}\n Pool: {chem[2]}\n Chlorine: {chem[3]}\t\tpH: {chem[4]}\n Temperature: {chem[5]}\n Number of Swimmers: {chem[6]}\n Time: {chem[7]}\n\n' for chem in chems]
         await interaction.response.send_message(f"# Summary of Chem Checks:\n{''.join(chems_formatted)}", ephemeral=True)
 
     @discord.app_commands.command(description="vats")
     async def vats(self, interaction:discord.Interaction):
-        vats = self.fred.database.select_last_vat()
+        for branch_id, branch_info in settings.SETTINGS_DICT['branches'].items():
+            if interaction.guild.id == branch_info['guild_id']:
+                interaction_branch_id = branch_id
+        vats = self.fred.database.select_last_vat(interaction_branch_id)
         vats_formatted = [f'Guard Name: <@{vat[0]}>\n Supervisor Name: <@{vat[1]}>\n VAT ID: {vat[2]}\n Pool: {vat[3]}\n Number of Swimmers: {vat[4]}\n Number of Guards: {vat[5]}\n Stimuli: {vat[6]}\n Pass?: {vat[7]}\n Response Time (s): {vat[8]}\n Time: {vat[9]}\n\n' for vat in vats]
         await interaction.response.send_message(f"# Most Recent VAT:\n{''.join(vats_formatted)}", ephemeral=True)
 
@@ -61,15 +67,18 @@ class Formstack_Commands(discord.app_commands.Group):
     @discord.app_commands.command(description="vats")
     async def vats_dashboard(self, interaction:discord.Interaction):
         now = datetime.datetime.now()
+        for branch_id, branch_info in settings.SETTINGS_DICT['branches'].items():
+            if interaction.guild.id == branch_info['guild_id']:
+                interaction_branch_id = branch_id
         
 
         vats_by_guard = {}
-        for guard in self.fred.database.discord_users:
-            if interaction.guild.get_role(settings.LIFEGUARD_ROLE_ID_007) in guard.roles:
+        for guard in self.fred.database.discord_users[interaction_branch_id]:
+            if interaction.guild.get_role(settings.SETTINGS_DICT['branches'][interaction_branch_id]['lifeguard_role_id']) in guard.roles:
                 vats_by_guard[guard.id] = 0
 
         # Adding the number of VATs to each guards total
-        vats = self.fred.database.select_vats_month(now)
+        vats = self.fred.database.select_vats_month(now, interaction_branch_id)
         for vat in vats:
             if vat[0] in vats_by_guard:
                 vats_by_guard[vat[0]] += 1

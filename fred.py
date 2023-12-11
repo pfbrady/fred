@@ -19,8 +19,11 @@ class Fred(Bot):
         self.database = db.YMCADatabase()
 
     async def on_ready(self):
-        for branch_id in settings.SETTINGS_DICT.keys():
-            self.database.init_discord_users(self.get_all_members(), branch_id)
+        for guild in self.guilds:
+            for branch_id, branch_info in settings.SETTINGS_DICT['branches'].items():
+                if branch_info['guild_id'] == guild.id:
+                    self.database.init_discord_users(self.get_all_members(), branch_id)
+                    self.database.init_w2w_users(branch_id)
         #self.database.load_chems()
         #self.database.load_vats()
  

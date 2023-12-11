@@ -58,7 +58,7 @@ class Tasks(commands.Cog):
                             for channel in guild.text_channels:
                                 if channel.name == 'test3':
                                     await channel.send(f"Updated Chems/VATs/Opening&Closing: {updates}")
-                                    last_chem = self.fred.database.select_last_chem([pool.name])
+                                    last_chem = self.fred.database.select_last_chem([pool.name], branch.branch_id)
                                     now = datetime.datetime.now()
                                     if (last_chem[0][7] < str(now - datetime.timedelta(hours=2, minutes=30))
                                         and now > pool.opening_time + datetime.timedelta(hours=2, minutes=30)
