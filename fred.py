@@ -30,8 +30,7 @@ class Fred(Bot):
         await self.load_extension("cogs.commands2.supervisor.w2w_commands")
         await self.load_extension("cogs.commands2.supervisor.formstack_commands")
         await self.load_extension("cogs.tasks2.fred_tasks")
-        self.tree.copy_global_to(guild=self.guilds[0])
-        await self.tree.sync(guild=self.guilds[0])
+        await self.tree.sync()
 
         await w2w_get.setup(self)
         print(f'Logged in as {self.user} (ID: {self.user.id})')

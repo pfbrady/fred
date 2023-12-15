@@ -45,4 +45,5 @@ def form_rss_to_dict(link: str):
     parsed_entries.reverse()
     return parsed_entries
 
-#print(form_rss_to_dict(settings.VATS_RSS_007)[-1])
+#print(form_rss_to_dict(settings.OC_RSS_007)[-3])
+#print(datetime.datetime.strptime('December 13, 2023 08:33 PM', '%B %d, %Y %I:%M %p'))
