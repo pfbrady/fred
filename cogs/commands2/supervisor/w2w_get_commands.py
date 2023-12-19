@@ -3,6 +3,11 @@ import discord
 from discord.ext import commands, tasks
 from w2w import get_assigned_shifts
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from fred import Fred
+
 class W2W_Get_Commands(commands.Cog):
 
     def __init__(self, Fred):
@@ -24,5 +29,5 @@ class W2W_Get_Commands(commands.Cog):
     # async def everyone_tomorrow(self, ctx):
     #     await ctx.send()
 
-async def setup(Fred):
-    await Fred.add_cog(W2W_Get_Commands(Fred))
+async def setup(fred):
+    await fred.add_cog(W2W_Get_Commands(fred))

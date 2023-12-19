@@ -68,7 +68,7 @@ def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None,
         dt_end = dt_start
 
     # GET request to W2W API
-    req_json = requests.get(f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN}').json()
+    req_json = requests.get(f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN_007}').json()
     
     # Handle position parameter. If nothing passes in, defaults to all postions.
     if not positions:
@@ -121,8 +121,121 @@ def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None,
     
     return selected_employees
 
+def get_open_close_times_today(positions: [W2WPosition]):
+    return get_open_close_times(datetime.datetime.now(), positions)
+
+def get_open_close_times(dt_start: datetime.datetime, positions: [W2WPosition], dt_end: datetime.datetime = None):
+    # Handle date parameters: If only one date passed, sets times equal.
+    start_date = dt_start.strftime("%m/%d/%Y")
+    if dt_end:
+        end_date = dt_end.strftime("%m/%d/%Y")
+    else:
+        end_date = start_date
+        dt_end = dt_start
+
+    # GET request to W2W API
+    req_json = requests.get(f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN_007}').json()
+
+    w2w_shifts = [W2WShift(shift) for shift in req_json['AssignedShiftList'] if int(shift['POSITION_ID']) in positions]
+    extreme_times = None
+    for w2w_shift in w2w_shifts:
+        if not extreme_times:
+            extreme_times = [w2w_shift.start_datetime, w2w_shift.end_datetime]
+        if w2w_shift.start_datetime < extreme_times[0]:
+            extreme_times[0] = w2w_shift.start_datetime
+        if w2w_shift.end_datetime > extreme_times[1]:
+            extreme_times[1] = w2w_shift.end_datetime
+    return tuple(extreme_times)
+
+            
+        
+    
+
 def get_employees_now(positions: [W2WPosition] = None):
     return get_employees(datetime.datetime.now(), positions=positions)
+
+def w2wpos_from_default_pos(default_pos:str, type:W2WPosition):
+    if default_pos == 'all':
+        return type.value
+    elif type == W2WPosition.GUARDS:
+        if default_pos == 'complex':
+            return [type.value[0], type.value[2]]
+        else:
+            return [type.value[1], type.value[2]]
+    else: # if type is instructors
+        if default_pos == 'group':
+            return [type.value[1]]
+        else:
+            return [type.value[0]] # SWAM
+        
+def w2w_from_default_time(default_time: str, positions: [W2WPosition] = None):
+    now = datetime.datetime.now()
+    if default_time == 'now':
+        return get_employees_now(positions)
+    elif default_time == 'earlier-today':
+        return get_employees(datetime.datetime(now.year, now.month, now.day), now, positions)
+    elif default_time == 'later-today':
+        return get_employees(now, datetime.datetime(now.year, now.month, now.day, 23, 59), positions)
+    elif default_time == 'today':
+        return get_employees(datetime.datetime(now.year, now.month, now.day), datetime.datetime(now.year, now.month, now.day, 23, 59), positions)
+    elif default_time == 'tomorrow':
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1), 
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=23, minutes=59), 
+            positions
+        )
+    elif default_time == 'week':
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1), 
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=6, hours=23, minutes=59), 
+            positions
+        )
+    elif default_time == 'today-closers':
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day, 19, 59), 
+            datetime.datetime(now.year, now.month, now.day, 23, 59), 
+            positions,
+            'closers'
+        )
+    elif default_time == 'tomorrow-openers':
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1), 
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=23, minutes=59), 
+            positions,
+            'openers'
+        )
+    elif default_time == 'tomorrow-closers':
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=19, minutes=59), 
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=23, minutes=59), 
+            positions,
+            'closers'
+        )
+    elif default_time == 'week-openers':
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=19, minutes=59), 
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=6, hours=23, minutes=59), 
+            positions,
+            'openers'
+        )
+    elif default_time == 'week-closers':
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=1, hours=19, minutes=59), 
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=6, hours=23, minutes=59), 
+            positions,
+            'closers'
+        )
+    else:
+        weekdays = {'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3, 'friday': 4, 'saturday': 5, 'sunday': 6}
+        today = datetime.datetime(now.year, now.month, now.day).weekday()
+        delta = weekdays[default_time] - today
+        if delta <= 0:
+            delta += 7
+        return get_employees(
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=delta), 
+            datetime.datetime(now.year, now.month, now.day) + datetime.timedelta(days=delta, hours=23, minutes=59), 
+            positions
+        )
 
 #print(get_employees(datetime.datetime(2023, 11, 8, 0, 0), datetime.datetime(2023, 11, 8, 23, 59), positions=W2WPosition.INSTRUCTORS.value))
 #print(get_employees(datetime.datetime(2023, 10, 30, 12, 0)))
@@ -138,7 +251,7 @@ def get_assigned_shifts(start_date=None, role=None):
     start_date = tomorrow if start_date == 'tomorrow' else today if start_date == 'today' else start_date
     end_date = start_date
 
-    api_url_shifts = f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN}'
+    api_url_shifts = f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN_007}'
     req_json_shifts = requests.get(api_url_shifts).json()['AssignedShiftList']
 
     lifeguard_data = [item for item in req_json_shifts if item.get('POSITION_NAME', '').lower().find('lifeguard') != -1]
@@ -166,3 +279,4 @@ def get_assigned_shifts(start_date=None, role=None):
     return '\n'.join(messages)
 
 #print(get_assigned_shifts('10/25/2023', role='lifeguards'))
+#print(w2w_from_default_time('tomorrow-closers', [342888573, 342888572]))

@@ -14,7 +14,7 @@ def run():
         end_date = end_date.strftime("%m/%d/%Y")
 
         req = requests.get('https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date=' + 
-                        today + '&end_date=' + end_date + '&key=' + settings.W2W_TOKEN)
+                        today + '&end_date=' + end_date + '&key=' + settings.W2W_TOKEN_007)
 
 
                             
