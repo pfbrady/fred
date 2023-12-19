@@ -71,8 +71,9 @@ class Tasks(commands.Cog):
                                         await channel.send(f"Notification: {' '.join(employees_formatted)} Please submit a chemical check for the {pool.name}.")
                                     
                                     last_opening = self.fred.database.select_last_opening(pool.name, branch.branch_id)
-                                    if (last_opening[7] < str(now - datetime.timedelta(hours=10))
-                                        and now > pool.opening_time + datetime.timedelta(minutes=45)
+                                    if (last_opening[7] < str(now - datetime.timedelta(hours=16))
+                                        and now > pool.opening_time + datetime.timedelta(hours=1, minutes=30)
+                                        and now < pool.closing_time - datetime.timedelta(minutes=30)
                                     ):
                                         w2w_pos = w2w.w2wpos_from_default_pos(pool_group.name, w2w.W2WPosition.GUARDS)
                                         w2w_users = w2w.w2w_from_default_time('now', w2w_pos)
