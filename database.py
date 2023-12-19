@@ -22,8 +22,6 @@ class YMCADatabase(object):
                 YMCADatabase.connection = sqlite3.connect("ymca_aquatics.db")
             except Exception as e:
                 logging.warning(f"Error: Connection to database 'ymca_aquatics.db' not established {e}")
-            except Exception as e:
-                logging.warning(f"Error: Connection to database 'ymca_aquatics.db' not established {e}")
             else:
                 logging.log(msg="Connection to database 'ymca_aquatics.db' established", level=logging.INFO)
                 self.w2w_users = {key:[] for key in settings.SETTINGS_DICT['branches'].keys()}
@@ -259,8 +257,6 @@ class YMCADatabase(object):
                     COMMIT;
                 """)
             except sqlite3.IntegrityError:
-                pass
-                #logging.warning(f"Discord User {user.display_name} (ID: {user.id}) already in table 'discord_users'")
                 pass
                 #logging.warning(f"Discord User {user.display_name} (ID: {user.id}) already in table 'discord_users'")
             else:
