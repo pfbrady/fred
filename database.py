@@ -26,7 +26,6 @@ class YMCADatabase(object):
                 self.discord_users = {key:[] for key in settings.SETTINGS_DICT['branches'].keys()}
                 self.init_tables()
                 self.init_branches()
-                #self.init_w2w_users()
                 self.form_tables = {'chem_checks': {'last_id': 0, 'rss': settings.CHEMS_RSS_007}, 
                       'vats': {'last_id': 0, 'rss': settings.VATS_RSS_007},
                       'opening_checklists': {'last_id': 0, 'rss': settings.OC_RSS_007},
@@ -106,34 +105,38 @@ class YMCADatabase(object):
             else:
                 logging.log(msg=f"VAT (ID: {entry_dict['Unique ID']}) inserted into table 'vats'", level=logging.INFO)
         elif table == "opening_checklists":
-            discord_id = self.handle_names('007', entry_dict['Name of the individual completing the inspection'])
+            keys = entry_dict.keys()
+            oc_uuid = entry_dict['Unique ID']
+            discord_id = self.handle_names('007', entry_dict['Name of the individual completing the inspection']) if self.handle_names('007', entry_dict['Name of the individual completing the inspection']) else 'NULL'
+            name = self.handle_quotes(entry_dict['Name of the individual completing the inspection'])
+            branch_id = '007'
+            regulatory_info = self.handle_quotes(entry_dict[self.get_regulatory_key_from_rss_keys(keys)]) if self.get_regulatory_key_from_rss_keys(keys) else 'NULL'
+            pool = entry_dict['Which pool do you need to inspect?'] if 'Which pool do you need to inspect?' in keys else 'NULL'
+            opening_time = self.handle_rss_datetime_oc_because_consistency_apparently_doesnt_exist(entry_dict['Date & Time of Inspection']) if 'Date & Time of Inspection' in keys else 'NULL'
+            submit_time = entry_dict['Time']
+            aed_info = entry_dict['AED Inspection'] if 'AED Inspection' in keys else 'NULL'
+            adult_pads_expiration_date = self.handle_rss_date(entry_dict['What is the expiration date for the Adult Electrode Pads?']) if 'What is the expiration date for the Adult Electrode Pads?' in keys else 'NULL'
+            pediatric_pads_expiration_date = self.handle_rss_date(entry_dict['What is the expiration date for the Pediatric Electrode Pads?']) if 'What is the expiration date for the Pediatric Electrode Pads?' in keys else 'NULL'
+            aspirin_expiration_date = self.handle_rss_date(entry_dict['What is the expiration date of the Aspirin?']) if 'What is the expiration date of the Aspirin?' in keys else 'NULL'
+            sup_oxygen_info = entry_dict['Supplemental Oxygen Inspection'] if 'Supplemental Oxygen Inspection' in keys else 'NULL'
+            sup_oxygen_psi = int(entry_dict['What is the current pressure level of the oxygen tank?'].split(" ")[1]) if 'What is the current pressure level of the oxygen tank?' in keys else 'NULL'
+            first_aid_info = entry_dict['First Aid Kit Inspection'] if 'First Aid Kit Inspection' in keys else 'NULL'
+            chlorine = entry_dict['What is the opening CL reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?'] if 'What is the opening CL reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?' in keys else 'NULL'
+            ph = entry_dict['What is the opening PH reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?'] if 'What is the opening PH reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?' in keys else 'NULL'
+            water_temp = entry_dict['What is the opening water temperature (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?'] if 'What is the opening water temperature (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?' in keys else 'NULL'
+            lights_function = 'NULL'
+            handicap_chair_function = entry_dict['Does the handicap chair function as required for usage by guests?'] if 'Does the handicap chair function as required for usage by guests?' in keys else 'NULL'
+            spare_battery_present = entry_dict['Is there a spare battery available for the handicap chair?'] if 'Is there a spare battery available for the handicap chair?' in keys else 'NULL'
+            vacuum_present = entry_dict['Did you have to remove the robotic vacuum from the pool before opening?'] if 'Did you have to remove the robotic vacuum from the pool before opening?' in keys else 'NULL'
             try:
                 cursor.executescript(f"""
                     BEGIN;
                     INSERT INTO {table}
                     VALUES(
-                        {entry_dict['Unique ID']},
-                        {discord_id if discord_id else 'NULL'},
-                        '{self.handle_quotes(entry_dict['Name of the individual completing the inspection'])}',
-                        '007',
-                        '{entry_dict['Which pool do you need to inspect?']}',
-                        '{self.handle_rss_datetime_oc_because_consistency_apparently_doesnt_exist(entry_dict['Date & Time of Inspection'])}',
-                        '{entry_dict['Time']}',
-                        '{entry_dict[f'Regulatory & Compliance Inspection Data ({entry_dict["Which pool do you need to inspect?"] if entry_dict["Which pool do you need to inspect?"] != "Outdoor Complex" else "Outdoor Pool Complex"}, {entry_dict["What checklist do you need to submit?"].split(" ")[0]})']}',
-                        '{self.handle_aed_inspection(entry_dict)}',
-                        '{self.handle_rss_date(entry_dict['What is the expiration date for the Adult Electrode Pads?'])}',
-                        '{self.handle_rss_date(entry_dict['What is the expiration date for the Pediatric Electrode Pads?'])}',
-                        '{self.handle_rss_date(entry_dict['What is the expiration date of the Aspirin?'])}',
-                        '{entry_dict['Supplemental Oxygen Inspection']}',
-                        '{int(entry_dict['What is the current pressure level of the oxygen tank?'].split(" ")[1])}',
-                        '{entry_dict['First Aid Kit Inspection']}',
-                        '{entry_dict['What is the opening CL reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?']}',
-                        '{entry_dict['What is the opening PH reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?']}',
-                        '{entry_dict['What is the opening water temperature (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?']}',
-                        'NULL',
-                        '{entry_dict['Does the handicap chair function as required for usage by guests?']}',
-                        '{entry_dict['Is there a spare battery available for the handicap chair?']}',
-                        '{entry_dict['Did you have to remove the robotic vacuum from the pool before opening?']}'
+                        {oc_uuid}, {discord_id}, '{name}', '{branch_id}', '{pool}', '{opening_time}', '{submit_time}', '{regulatory_info}',
+                        '{aed_info}', '{adult_pads_expiration_date}', '{pediatric_pads_expiration_date}', '{aspirin_expiration_date}',
+                        '{sup_oxygen_info}', '{sup_oxygen_psi}', '{first_aid_info}', '{chlorine}', '{ph}', '{water_temp}',
+                        '{lights_function}', '{handicap_chair_function}', '{spare_battery_present}', '{vacuum_present}'
                     );
                     COMMIT;
                 """)
@@ -144,32 +147,36 @@ class YMCADatabase(object):
             else:
                 logging.log(msg=f"Opening Checklist (ID: {entry_dict['Unique ID']}) inserted into table 'opening_checklists'", level=logging.INFO)
         elif table == "closing_checklists":
-            discord_id = self.handle_names('007', entry_dict['Name of the individual completing the inspection'])
+            keys = entry_dict.keys()
+            oc_uuid = entry_dict['Unique ID']
+            discord_id = self.handle_names('007', entry_dict['Name of the individual completing the inspection']) if self.handle_names('007', entry_dict['Name of the individual completing the inspection']) else 'NULL'
+            name = self.handle_quotes(entry_dict['Name of the individual completing the inspection'])
+            branch_id = '007'
+            pool = entry_dict['Which pool do you need to inspect?'] if 'Which pool do you need to inspect?' in keys else 'NULL'
+            closing_time = self.handle_rss_datetime_oc_because_consistency_apparently_doesnt_exist(entry_dict['Date & Time of Inspection']) if 'Date & Time of Inspection' in keys else 'NULL'
+            submit_time = entry_dict['Time']
+            regulatory_info = self.handle_quotes(entry_dict[self.get_regulatory_key_from_rss_keys(keys)]) if self.get_regulatory_key_from_rss_keys(keys) else 'NULL'
+            chlorine = entry_dict['What is the closing CL reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?'] if 'What is the closing CL reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?' in keys else 'NULL'
+            ph = entry_dict['What is the closing PH reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?'] if 'What is the closing PH reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?' in keys else 'NULL'
+            water_temp = entry_dict['What is the closing water temperature (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?'] if 'What is the closing water temperature (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?' in keys else 'NULL'
+            lights_function = 'NULL'
+            vacuum_function = self.handle_vacuum_closing(entry_dict)
             try:
                 cursor.executescript(f"""
                     BEGIN;
                     INSERT INTO {table}
                     VALUES(
-                        {entry_dict['Unique ID']},
-                        {discord_id if discord_id else 'NULL'},
-                        '{self.handle_quotes(entry_dict['Name of the individual completing the inspection'])}',
-                        '007',
-                        '{entry_dict['Which pool do you need to inspect?']}',
-                        '{self.handle_rss_datetime_oc_because_consistency_apparently_doesnt_exist(entry_dict['Date & Time of Inspection'])}',
-                        '{entry_dict['Time']}',
-                        '{self.handle_quotes(entry_dict[f'Regulatory & Compliance Inspection Data ({entry_dict["Which pool do you need to inspect?"] if entry_dict["Which pool do you need to inspect?"] != "Outdoor Complex" else "Outdoor Pool Complex"}, {entry_dict["What checklist do you need to submit?"].split(" ")[0]})'])}',
-                        '{entry_dict['What is the closing CL reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?']}',
-                        '{entry_dict['What is the closing PH reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?']}',
-                        '{entry_dict['What is the closing water temperature (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?']}',
-                        'NULL',
-                        '{self.handle_vacuum(entry_dict)}'
+                        {oc_uuid}, {discord_id}, '{name}', '{branch_id}', '{pool}', '{closing_time}', '{submit_time}', '{regulatory_info}',
+                        '{chlorine}', '{ph}', '{water_temp}', '{lights_function}', '{vacuum_function}'
                     );
                     COMMIT;
                 """)
             except sqlite3.IntegrityError:
-                logging.warning(f"Opening Checklist (ID: {entry_dict['Unique ID']}) already in table 'opening_checklists'")
+                logging.warning(f"Closing Checklist (ID: {entry_dict['Unique ID']}) already in table 'closing_checklists'")
+            except sqlite3.OperationalError:
+                logging.warning(f"Closing Checklist (ID: {entry_dict['Unique ID']}) error adding to table 'closing_checklists'")
             else:
-                logging.log(msg=f"Opening Checklist (ID: {entry_dict['Unique ID']}) inserted into table 'opening_checklists'", level=logging.INFO)
+                logging.log(msg=f"Closing Checklist (ID: {entry_dict['Unique ID']}) inserted into table 'closing_checklists'", level=logging.INFO)\
 
     def init_tables(self):
         cursor = self.connection.cursor()
@@ -271,13 +278,13 @@ class YMCADatabase(object):
                 selected_users.append(user[0])
             return selected_users
         
-    def handle_aed_inspection(self, entry_dict: dict):
-        try:
-            return entry_dict['AED Inspection']
-        except KeyError:
-            return 'NULL'
+    def get_regulatory_key_from_rss_keys(self, keys: list):
+        for key in keys:
+            if 'Regulatory' in key:
+                return key
+        return None
 
-    def handle_vacuum(self, entry_dict: dict):
+    def handle_vacuum_closing(self, entry_dict: dict):
         if entry_dict['Does your supervisor expect you to place a robotic vacuum into the pool?'] == 'Yes':
             if entry_dict['Have you placed the robotic vacuum in the pool?'] == 'Yes':
                 if entry_dict['Before leaving the Y, do you see the vacuum moving across the pool bottom as expected?'] == 'Yes':
@@ -471,6 +478,29 @@ class YMCADatabase(object):
             else:
                 chems.append(cursor.fetchone())
         return chems
+    
+    def pool_to_opening_type(self, pool: str):
+        if pool == 'Complex Lap Pool':
+            return 'Bubble Pool'
+        elif pool == 'Complex Family Pool':
+            return 'Outdoor Complex'
+        else:
+            return pool
+    
+    def select_last_opening(self, pool: str, branch_id: str):
+        cursor = self.connection.cursor()
+        oc_pool = self.pool_to_opening_type(pool)
+        chems = []
+        try:
+            cursor.execute(f"""
+                SELECT discord_id, oc_uuid, pool, sup_oxygen_psi, chlorine, ph, water_temp, MAX(submit_time)
+                FROM opening_checklists
+                WHERE pool = '{oc_pool}' AND branch_id = '{branch_id}';
+            """)
+        except Exception as e:
+            print(e)
+        else:
+            return cursor.fetchone()
 
     def select_last_vat(self, branch_id):
         cursor = self.connection.cursor()

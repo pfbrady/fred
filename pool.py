@@ -15,13 +15,13 @@ class Pool(object):
     def fromname(cls, name):
         if name not in {'Indoor Pool', '10-Lane Pool', 'Complex Lap Pool', 'Complex Family Pool'}:
             raise ValueError(f"Pool: name must be one of {{'Indoor Pool', '10-Lane Pool', 'Complex Lap Pool', 'Complex Family Pool'}}")
-        if name in {'Indoor Pool', '10-Lane Pool'}:
-            positions = [w2w.W2WPosition.LIFEGUARD_MAIN_BUILDING.value]
-        else:
-            positions = [w2w.W2WPosition.LIFEGUARD_COMPLEX.value]
+        positions = [w2w.W2WPosition.LIFEGUARD_MAIN_BUILDING.value] if name in {'Indoor Pool', '10-Lane Pool'} else [w2w.W2WPosition.LIFEGUARD_COMPLEX.value]
         opening_time, closing_time = w2w.get_open_close_times_today(positions)
-        if name in daxko.get_open_pools():
-            is_open = True
-        else:
-            is_open = False
+        is_open = True if name in daxko.get_open_pools() else False
         return cls(name, datetime.datetime.now(), is_open, positions, opening_time, closing_time)
+    
+    def update_extreme_times(self):
+        self.opening_time, self.closing_time = w2w.get_open_close_times_today(self.positions)
+
+    def update_is_open(self):
+        self.is_open = True if self.name in daxko.get_open_pools() else False
