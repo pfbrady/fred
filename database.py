@@ -4,6 +4,8 @@ import settings
 import logging
 import datetime
 import csv
+import datetime
+import csv
 import time
 from typing import List
 from discord.user import User as DicordUser
@@ -18,6 +20,8 @@ class YMCADatabase(object):
         if YMCADatabase.connection is None:
             try:
                 YMCADatabase.connection = sqlite3.connect("ymca_aquatics.db")
+            except Exception as e:
+                logging.warning(f"Error: Connection to database 'ymca_aquatics.db' not established {e}")
             except Exception as e:
                 logging.warning(f"Error: Connection to database 'ymca_aquatics.db' not established {e}")
             else:
@@ -255,6 +259,8 @@ class YMCADatabase(object):
                     COMMIT;
                 """)
             except sqlite3.IntegrityError:
+                pass
+                #logging.warning(f"Discord User {user.display_name} (ID: {user.id}) already in table 'discord_users'")
                 pass
                 #logging.warning(f"Discord User {user.display_name} (ID: {user.id}) already in table 'discord_users'")
             else:
