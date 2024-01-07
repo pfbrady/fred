@@ -302,7 +302,11 @@ class YMCADatabase(object):
     
     def handle_names(self, branch_id: str, name: str, last_name: str = None) -> str:
         if not last_name:
-            name, last_name = name.split(' ', 1)
+            split_name = name.split(' ', 1)
+            if len(split_name) == 1:
+                name, last_name = (split_name[0], '')
+            else:
+                name, last_name = split_name
         potential_match = (0, 0)
         for discord_user in self.discord_users[branch_id]:
             discord_display_name_split = discord_user.display_name.lower().split(' ', 1)
