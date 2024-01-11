@@ -3,6 +3,7 @@ import discord
 import logging
 from fred import Fred
 import database
+import whentowork
 
 def run():
     handler = logging.FileHandler(filename=f'discord.log', encoding='utf-8', mode='w')

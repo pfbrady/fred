@@ -13,8 +13,8 @@ class YMCABranch(object):
         self.pool_groups = pool_groups
 
     @classmethod
-    def fromname(cls, name):
-        if name not in {'western'}:
-            raise ValueError(f"Pool: name must be one of {{'western'}}")
+    def fromid(cls, id):
+        if id not in settings.SETTINGS_DICT['branches']:
+            raise ValueError(f"Branch: name must be one of {settings.SETTINGS_DICT['branches'].keys()}")
         pool_groups = [pg.PoolGroup.fromname(names) for names in {'main', 'complex'}]
-        return cls(name, '007', settings.SETTINGS_DICT['branches']['007']['guild_id'], pool_groups)
+        return cls(settings.SETTINGS_DICT['branches']['name'], id, settings.SETTINGS_DICT['branches']['007']['guild_id'], pool_groups)

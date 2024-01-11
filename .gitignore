@@ -59,7 +59,7 @@ cover/
 *.csv
 
 # YMCA JSON Data
-ymca.json
+config.json
 
 # Sqlite stuff:
 *.db

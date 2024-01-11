@@ -1,15 +1,16 @@
 import w2w
 import daxko
 import datetime
+from typing import List
 
 class Pool(object):
-    def __init__(self, name, created_dt, is_open, positions, opening_time, closing_time):
-        self.name = name
+    def __init__(self, name: str, created_dt:datetime.datetime, is_open:bool, positions:List[w2w.W2WPosition], opening_time:datetime.datetime, closing_time:datetime.datetime):
+        self.name: str = name
         self.created_dt: datetime.datetime = created_dt
         self.is_open: bool = is_open
-        self.positions = positions
-        self.opening_time = opening_time
-        self.closing_time = closing_time
+        self.positions:List[w2w.W2WPosition] = positions
+        self.opening_time:datetime.datetime = opening_time
+        self.closing_time:datetime.datetime = closing_time
 
     @classmethod
     def fromname(cls, name):

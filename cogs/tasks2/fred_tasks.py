@@ -22,8 +22,7 @@ class Tasks(commands.Cog):
 
     def __init__(self, fred):
         self.fred: Fred = fred
-        #self.send_unassigned_shifts.start()
-        #self.send_last_chem.start()
+        self.send_unassigned_shifts.start()
         self.update_tables.start()
         self.check_pool_extreme_times.start()
 
@@ -34,19 +33,6 @@ class Tasks(commands.Cog):
             for channel in guild.text_channels:
                 if channel.name == 'test3':
                     await context.send(f'Member {member.mention} has joined!')
-    '''
-    #TASKS
-    @tasks.loop(seconds=10.0)
-    async def change_stats(self):
-        await self.dBot.change_presence(activity=discord.Game(next(status)))
-    '''
-    # @tasks.loop(seconds=30.0)
-    # async def send_last_chem(self):
-    #     for guild in self.fred.guilds:
-    #         for channel in guild.text_channels:
-    #             if channel.name == 'test3':
-    #                 await channel.send(f"The last chem check completed was: {self.Fred.database.select_last_chem(['Indoor Pool'])}")
-    
 
     @tasks.loop(minutes=10)
     async def update_tables(self):
@@ -94,24 +80,18 @@ class Tasks(commands.Cog):
                                     await channel.send("updating info")
 
 
-    # @tasks.loop(seconds=10.0)
-    # async def send_unassigned_shifts(self):
-    #     print("run")
-    #     shifts_tuple = gos.open_shifts()
-    #     shifts_as_int = [int(shift) for shift in shifts_tuple]
-    #     lifeguard_unassigned_shifts, aquatic_lead_unassigned_shifts, swim_instr_unassigned_shifts = shifts_as_int
-    #     current_time = datetime.datetime.now(pytz.timezone('US/Eastern'))
-    #     print(current_time.hour)
+    @tasks.loop(time=datetime.time(hour=21, minute=15, tzinfo=pytz.timezone('US/Eastern')))
+    async def send_unassigned_shifts(self):
+        lifeguard_unassigned_shifts, aquatic_lead_unassigned_shifts, swim_instr_unassigned_shifts = [int(shift) for shift in gos.open_shifts()]
 
-    #     if current_time.hour == 14:
-    #         for guild in self.fred.guilds:
-    #             for channel in guild.text_channels:
-    #                 if channel.name == 'test' and lifeguard_unassigned_shifts != 0:
-    #                     await channel.send(f"Hi, there are ({lifeguard_unassigned_shifts}) unassigned Lifeguard shifts tomorrow.")
-    #                 elif channel.name == 'test' and aquatic_lead_unassigned_shifts != 0:
-    #                     await channel.send(f"Hi, there are ({aquatic_lead_unassigned_shifts}) unassigned Supervisor shifts tomorrow.")
-    #                 elif channel.name == 'test' and swim_instr_unassigned_shifts != 0:
-    #                     await channel.send(f"Hi, there are ({swim_instr_unassigned_shifts}) unassigned Swim Instructor shifts tomorrow.")
+        for guild in self.fred.guilds:
+            for channel in guild.text_channels:
+                if channel.name == 'test' and lifeguard_unassigned_shifts != 0:
+                    await channel.send(f"Hi, there are ({lifeguard_unassigned_shifts}) unassigned Lifeguard shifts tomorrow.")
+                elif channel.name == 'test' and aquatic_lead_unassigned_shifts != 0:
+                    await channel.send(f"Hi, there are ({aquatic_lead_unassigned_shifts}) unassigned Supervisor shifts tomorrow.")
+                elif channel.name == 'test' and swim_instr_unassigned_shifts != 0:
+                    await channel.send(f"Hi, there are ({swim_instr_unassigned_shifts}) unassigned Swim Instructor shifts tomorrow.")
 
     #COMMANDS
     @commands.command()
