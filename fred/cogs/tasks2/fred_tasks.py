@@ -10,7 +10,7 @@ import daxko
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from fred import Fred
+    from fred.fred import Fred
 
 
 from itertools import cycle

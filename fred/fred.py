@@ -1,19 +1,34 @@
+import logging
 import settings
 from discord.ext.commands import Bot
-import cogs.commands2.supervisor.w2w_get_commands as w2w_get
-import database as db
+import fred.database as db
 import ymca as y
 
+
+log = logging.getLogger(__name__)
+
+extensions = (
+    "cogs.commands2.supervisor.w2w_commands",
+    "cogs.commands2.supervisor.formstack_commands",
+    "cogs.tasks2.fred_tasks"
+)
 
 class Fred(Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.ymca: y.YMCA = None
         self.database: db.YMCADatabase = None
+        
 
     async def setup_hook(self) -> None:
         self.ymca = y.YMCA('YMCA of Delaware')
         self.database = db.YMCADatabase()
+
+        for extension in extensions:
+            try:
+                await self.load_extension(extension)
+            except Exception as e:
+                log.exception(f"Failed to load exception {e}.")
 
     async def on_ready(self):
         for guild in self.guilds:
@@ -23,12 +38,8 @@ class Fred(Bot):
                     self.database.init_w2w_users(branch_id)
         self.database.load_chems()
         self.database.load_vats()
- 
-        await self.load_extension("cogs.commands2.supervisor.w2w_commands")
-        await self.load_extension("cogs.commands2.supervisor.formstack_commands")
-        await self.load_extension("cogs.tasks2.fred_tasks")
+
         await self.tree.sync()
 
-        await w2w_get.setup(self)
         print(f'Logged in as {self.user} (ID: {self.user.id})')
         print('------')

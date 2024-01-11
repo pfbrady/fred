@@ -7,7 +7,7 @@ import w2w
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from fred import Fred
+    from fred.fred import Fred
 
 class W2W_Commands(discord.app_commands.Group):
     def __init__(self, name, description, fred):

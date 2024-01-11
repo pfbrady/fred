@@ -4,7 +4,7 @@ import datetime
 import time
 from typing import List
 from enum import Enum
-from database import YMCADatabase
+from fred.database import YMCADatabase
 
 class W2WShift():
     def __init__(self, w2w_api_dict):
