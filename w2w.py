@@ -145,7 +145,11 @@ def get_open_close_times(dt_start: datetime.datetime, positions: [W2WPosition], 
             extreme_times[0] = w2w_shift.start_datetime
         if w2w_shift.end_datetime > extreme_times[1]:
             extreme_times[1] = w2w_shift.end_datetime
-    return tuple(extreme_times)
+    if extreme_times:
+        return tuple(extreme_times)
+    else:
+        return (start_date, start_date)
+    
 
             
         

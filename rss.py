@@ -45,5 +45,8 @@ def form_rss_to_dict(link: str):
     parsed_entries.reverse()
     return parsed_entries
 
-#print(form_rss_to_dict(settings.OC_RSS_007)[1].keys())
+
+#a = form_rss_to_dict(settings.CHEMS_RSS_007)
+#for ab in a: print(ab.items())
 #print(datetime.datetime.strptime('December 13, 2023 08:33 PM', '%B %d, %Y %I:%M %p'))
+#print(datetime.datetime(34, 33333, 34343, 342342))

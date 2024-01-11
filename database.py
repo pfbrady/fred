@@ -6,9 +6,7 @@ import datetime
 import csv
 import datetime
 import csv
-import time
 from typing import List
-from discord.user import User as DicordUser
 from difflib import SequenceMatcher
 import rss
 
@@ -257,11 +255,9 @@ class YMCADatabase(object):
                     COMMIT;
                 """)
             except sqlite3.IntegrityError:
-                pass
-                #logging.warning(f"Discord User {user.display_name} (ID: {user.id}) already in table 'discord_users'")
+                logging.warning(f"Discord User {user.display_name} (ID: {user.id}) already in table 'discord_users'")
             else:
-                pass
-                #logging.log(msg=f"Discord User {user.display_name} (ID: {user.id}) inserted into table 'discord_users'", level=logging.INFO)
+                logging.log(msg=f"Discord User {user.display_name} (ID: {user.id}) inserted into table 'discord_users'", level=logging.INFO)
 
     def select_discord_users(self, users: List):
         cursor = self.connection.cursor()
@@ -533,13 +529,3 @@ class YMCADatabase(object):
             print(e)
         else:
             return cursor.fetchall()
-# if __name__ == "__main__":
-#     run()
-#a = YMCADatabase()
-# print(a.select_discord_users([731933785, 568705929, 757270967, 564685546]))
-#a = YMCADatabase()
-# a.load_chems()
-# formstack_time = '2020-06-10 07:05:47'
-# print(datetime.datetime.strptime(formstack_time, '%Y-%m-%d %H:%M:%S'))
-#print(a.select_vats_month(datetime.datetime.now()))
-#print(SequenceMatcher(None, 'christian', 'chris').ratio())
