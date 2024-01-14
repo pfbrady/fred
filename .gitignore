@@ -58,6 +58,9 @@ cover/
 # Formstack csv exports:
 *.csv
 
+# VSCode Stuff
+.vscode
+
 # YMCA JSON Data
 config.json
 
