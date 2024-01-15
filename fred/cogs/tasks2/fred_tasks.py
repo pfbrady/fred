@@ -1,12 +1,12 @@
 import discord
 from discord.ext import commands, tasks
-import get_open_shifts as gos
+import fred.get_open_shifts as gos
 import datetime
 import pytz
 import w2w
-import pool as pl
+import fred.ymca.pool as pl
 import cogs.commands2.supervisor.w2w_commands as w2w_comm
-import daxko
+import fred.daxko as daxko
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -92,18 +92,6 @@ class Tasks(commands.Cog):
                     await channel.send(f"Hi, there are ({aquatic_lead_unassigned_shifts}) unassigned Supervisor shifts tomorrow.")
                 elif channel.name == 'test' and swim_instr_unassigned_shifts != 0:
                     await channel.send(f"Hi, there are ({swim_instr_unassigned_shifts}) unassigned Swim Instructor shifts tomorrow.")
-
-    #COMMANDS
-    @commands.command()
-    async def ping(self, context):
-        print("pong?")
-        await context.send("Pong!")
-
-    @commands.command()
-    async def shifts(self, context, start_date=None, role=None):
-        print("shifts?")
-        shifts_info = w2w.get_assigned_shifts(start_date, role)
-        await context.send(shifts_info)
 
 async def setup(fred):
     await fred.add_cog(Tasks(fred))

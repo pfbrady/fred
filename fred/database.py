@@ -8,7 +8,7 @@ import datetime
 import csv
 from typing import List
 from difflib import SequenceMatcher
-import rss
+from . import rss
 
 class YMCADatabase(object):
 

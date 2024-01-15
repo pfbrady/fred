@@ -1,8 +1,9 @@
 import logging
 import settings
 from discord.ext.commands import Bot
-import fred.database as db
-import ymca as y
+import whentowork as w2w
+from .database import YMCADatabase
+from .ymca import YMCA
 
 
 log = logging.getLogger(__name__)
@@ -16,13 +17,13 @@ extensions = (
 class Fred(Bot):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ymca: y.YMCA = None
-        self.database: db.YMCADatabase = None
+        self.ymca: YMCA = None
+        self.database: YMCADatabase = None
         
 
     async def setup_hook(self) -> None:
-        self.ymca = y.YMCA('YMCA of Delaware')
-        self.database = db.YMCADatabase()
+        self.ymca = YMCA('YMCA of Delaware')
+        self.database = YMCADatabase()
 
         for extension in extensions:
             try:

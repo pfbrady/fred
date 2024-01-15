@@ -1,10 +1,43 @@
+from __future__ import annotations
+
 import settings
 import requests
 import datetime
 import time
-from typing import List
+from typing import TYPE_CHECKING, List
 from enum import Enum
+import whentowork
+import logging
 from fred.database import YMCADatabase
+
+if TYPE_CHECKING:
+    from .types.w2w import YMCAW2WClientPayload
+
+log = logging.getLogger(__name__)
+
+class YMCAW2WClient(whentowork.Client):
+    def __init__(self, hostname:str, token: str, position_ids: YMCAW2WClientPayload):
+        super().__init__(hostname, token, logger=log)
+        self._update_w2w_position_ids(position_ids)
+
+    def _update_w2w_position_ids(self, position_ids: YMCAW2WClientPayload):
+        self.director_id = position_ids['director']
+        self.specialist_id = position_ids['specialist']
+        self.supervisor_id = position_ids['supervisor']
+
+    def filer_by_positions(self, positions: List[whentowork.Position], shift: whentowork.Shift):
+        return True if shift.position in positions else False
+    
+    def filer_by_time(self, shift: whentowork.Shift, dt_start: datetime.datetime, dt_end: datetime.datetime):
+        return True if shift.start_datetime < dt_end and shift.end_datetime > dt_start else False
+    
+    def filter_shifts(self, shifts: List[whentowork.Shift], dt_start: datetime.datetime = None, dt_end: datetime.datetime = None, positions: List[whentowork.Position] = None):
+        if positions:
+            shifts = list(filter(lambda shift: shift.position in positions, shifts))           
+        if dt_start and dt_end:
+            shifts = list(filter(lambda shift: (shift.start_datetime < dt_end and shift.end_datetime > dt_start), shifts))
+        return shifts
+
 
 class W2WShift():
     def __init__(self, w2w_api_dict):
@@ -121,36 +154,6 @@ def get_employees(dt_start: datetime.datetime, dt_end: datetime.datetime = None,
     
     return selected_employees
 
-def get_open_close_times_today(positions: [W2WPosition]):
-    return get_open_close_times(datetime.datetime.now(), positions)
-
-def get_open_close_times(dt_start: datetime.datetime, positions: [W2WPosition], dt_end: datetime.datetime = None):
-    # Handle date parameters: If only one date passed, sets times equal.
-    start_date = dt_start.strftime("%m/%d/%Y")
-    if dt_end:
-        end_date = dt_end.strftime("%m/%d/%Y")
-    else:
-        end_date = start_date
-        dt_end = dt_start
-
-    # GET request to W2W API
-    req_json = requests.get(f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN_007}').json()
-
-    w2w_shifts = [W2WShift(shift) for shift in req_json['AssignedShiftList'] if int(shift['POSITION_ID']) in positions]
-    extreme_times = None
-    for w2w_shift in w2w_shifts:
-        if not extreme_times:
-            extreme_times = [w2w_shift.start_datetime, w2w_shift.end_datetime]
-        if w2w_shift.start_datetime < extreme_times[0]:
-            extreme_times[0] = w2w_shift.start_datetime
-        if w2w_shift.end_datetime > extreme_times[1]:
-            extreme_times[1] = w2w_shift.end_datetime
-    if extreme_times:
-        return tuple(extreme_times)
-    else:
-        return (start_date, start_date)
-    
-
             
         
     
@@ -241,46 +244,3 @@ def w2w_from_default_time(default_time: str, positions: [W2WPosition] = None):
             positions
         )
 
-#print(get_employees(datetime.datetime(2023, 11, 8, 0, 0), datetime.datetime(2023, 11, 8, 23, 59), positions=W2WPosition.INSTRUCTORS.value))
-#print(get_employees(datetime.datetime(2023, 10, 30, 12, 0)))
-#print(get_employees_now())
-
-# Function goal: get assigned shifts by date and by role
-# create possible list of roles that users can pass in: lifeguards, leads, instructors
-
-def get_assigned_shifts(start_date=None, role=None):
-    today = datetime.date.today().strftime("%m/%d/%Y")
-    tomorrow = (datetime.date.today() + datetime.timedelta(days=1)).strftime("%m/%d/%Y")  # Next day
-
-    start_date = tomorrow if start_date == 'tomorrow' else today if start_date == 'today' else start_date
-    end_date = start_date
-
-    api_url_shifts = f'https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/AssignedShiftList?start_date={start_date}&end_date={end_date}&key={settings.W2W_TOKEN_007}'
-    req_json_shifts = requests.get(api_url_shifts).json()['AssignedShiftList']
-
-    lifeguard_data = [item for item in req_json_shifts if item.get('POSITION_NAME', '').lower().find('lifeguard') != -1]
-    aquatic_lead_data = [item for item in req_json_shifts if item.get('POSITION_NAME', '').lower().find('lead') != -1]
-    swim_instr_data = [item for item in req_json_shifts if 'swim' in item.get('POSITION_NAME', '').lower() or 'swam' in item.get('POSITION_NAME', '').lower()]
-
-    messages = []
-    if role == 'instructors':
-        for instr in swim_instr_data:
-            message = f"First Name: {instr.get('FIRST_NAME', '')} \nLast Name: {instr.get('LAST_NAME', '')} \nRole: {instr.get('POSITION_NAME', '')} \nFrom: {instr.get('START_TIME', '')} to {instr.get('END_TIME', '')} \nJob Description: {instr.get('DESCRIPTION', '')} \n----------------------------\n"
-            messages.append(message)
-    elif role == 'lifeguards':
-        for lifeguard in lifeguard_data:
-            message = f"First Name: {lifeguard.get('FIRST_NAME', '')} \nLast Name: {lifeguard.get('LAST_NAME', '')} \nRole: {lifeguard.get('POSITION_NAME', '')} \nFrom: {lifeguard.get('START_TIME', '')} to {lifeguard.get('END_TIME', '')} \nJob Description: {lifeguard.get('DESCRIPTION', '')} \n----------------------------\n"
-            messages.append(message)
-    elif role == 'leads':
-        for lead in aquatic_lead_data:
-            message = f"First Name: {lead.get('FIRST_NAME', '')} \nLast Name: {lead.get('LAST_NAME', '')} \nRole: {lead.get('POSITION_NAME', '')} \nFrom: {lead.get('START_TIME', '')} to {lead.get('END_TIME', '')} \nJob Description: {lead.get('DESCRIPTION', '')} \n----------------------------\n"
-            messages.append(message)
-    else:
-        for shift in req_json_shifts:
-            message = f"First Name: {shift.get('FIRST_NAME', '')} \nLast Name: {shift.get('LAST_NAME', '')} \nRole: {shift.get('POSITION_NAME', '')} \nFrom: {shift.get('START_TIME', '')} to {shift.get('END_TIME', '')} \nJob Description: {shift.get('DESCRIPTION', '')} \n----------------------------\n"
-            messages.append(message)
-    
-    return '\n'.join(messages)
-
-#print(get_assigned_shifts('10/25/2023', role='lifeguards'))
-#print(w2w_from_default_time('tomorrow-closers', [342888573, 342888572]))
