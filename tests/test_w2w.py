@@ -7,6 +7,7 @@ from settings import SETTINGS_DICT
 
 class W2WTestCase(TestCase):
     def setUp(self):
+        YMCAW2WClient
         ymca = YMCA('YMCA of Delaware')
         self.ymca_w2w_client_western = ymca.branches['007'].w2w_client
         self.sample_start_date = date(2024, 1, 14)

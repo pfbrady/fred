@@ -37,6 +37,20 @@ class YMCAW2WClient(whentowork.Client):
         if dt_start and dt_end:
             shifts = list(filter(lambda shift: (shift.start_datetime < dt_end and shift.end_datetime > dt_start), shifts))
         return shifts
+    
+    def get_shifts_now(self, positions: List[whentowork.Position]):
+        now = datetime.datetime.now()
+        today_shifts = self.get_shifts_by_date(now.date(), now.date())
+        return self.filter_shifts(today_shifts, now, now, positions)
+    
+    def unique_employees(self, shifts: List[whentowork.Shift]):
+        unique_employees = []
+        for shift in shifts:
+            if shift.employee not in unique_employees:
+                unique_employees.append(shift.employee)
+        return unique_employees
+
+    
 
 
 class W2WShift():
