@@ -10,20 +10,6 @@ CREATE TABLE IF NOT EXISTS discord_users(
     branch_id,
     FOREIGN KEY(branch_id) REFERENCES branches(id)
 );
-CREATE TABLE IF NOT EXISTS aquatic_directors(
-    id PRIMARY KEY,
-    discord_id UNIQUE,
-    branch_id UNIQUE,
-    FOREIGN KEY(discord_id) REFERENCES discord_users(id),
-    FOREIGN KEY(branch_id) REFERENCES branches(id)
-);
-CREATE TABLE IF NOT EXISTS aquatic_specialists(
-    id PRIMARY KEY,
-    discord_id UNIQUE,
-    branch_id UNIQUE,
-    FOREIGN KEY(discord_id) REFERENCES discord_users(id),
-    FOREIGN KEY(branch_id) REFERENCES branches(id)
-);
 CREATE TABLE IF NOT EXISTS w2w_users(
     id PRIMARY KEY,
     discord_id UNIQUE,
