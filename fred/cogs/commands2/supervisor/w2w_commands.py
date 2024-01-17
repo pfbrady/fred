@@ -38,11 +38,14 @@ class W2W_Commands(discord.app_commands.Group):
             for default_pos in self.guards_default_pos if current.lower() in default_pos.lower()
         ]
     
+    @staticmethod
+    def w2w_employee_from_position_auto(self, position_auto: str)
+    
 
     @discord.app_commands.command(description="guards")
     @discord.app_commands.describe(time="The time group which you intend to send a message to. Options are listed above.")
     @discord.app_commands.autocomplete(time=guards_time_auto, position=guards_pos_auto)
-    async def guards(self, interaction:discord.Interaction, time: str, position_auto: str, message: str):
+    async def guards(self, interaction:discord.Interaction, time: str, position: str, message: str):
         int_branch = self.fred.ymca.get_branch_by_guild_id(interaction.guild_id)
         int_w2w_client = int_branch.w2w_client
 
@@ -50,7 +53,7 @@ class W2W_Commands(discord.app_commands.Group):
         positions.append(int_w2w_client.get_position_by_id(int_w2w_client.specialist_id))
         positions.append(int_w2w_client.get_position_by_id(int_w2w_client.supervisor_id))
         for pool_group in int_branch.pool_groups:
-            if position_auto in pool_group.aliases:
+            if position in pool_group.aliases:
                 positions.append(int_w2w_client.get_position_by_id(pool_group.w2w_lifeguard_position_id))
 
         
