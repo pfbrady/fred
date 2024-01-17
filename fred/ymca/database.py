@@ -1,6 +1,6 @@
 import sqlite3
 import requests
-import settings
+from settings import SETTINGS_DICT
 import logging
 import datetime
 import csv
@@ -8,29 +8,56 @@ import datetime
 import csv
 from typing import List
 from difflib import SequenceMatcher
-from . import rss
+from .ymca import YMCA
+from ..fred import Fred
+from ..rss import rss
+
+log = logging.getLogger(__name__)
 
 class YMCADatabase(object):
+    def __init__(self, ymca: YMCA):
+        self.ymca: YMCA = ymca
+        self.connection: sqlite3.Connection = None
+        try:
+            self.connection = sqlite3.connect("ymca_aquatics.db")
+        except Exception as e:
+            logging.warning(f"Error: Connection to database 'ymca_aquatics.db' not established {e}")
+        else:
+            log.log(msg="Connection to database 'ymca_aquatics.db' established", level=logging.INFO)
+            self.init_tables()
+            self.init_branches()
 
-    connection: sqlite3.Connection = None
+    def init_tables(self):
+        cursor = self.connection.cursor()
+        with open('./migrations/01_INIT.sql') as file:
+            init_sql = file.read()
+        cursor.executescript(init_sql)
 
-    def __init__(self):
-        if YMCADatabase.connection is None:
+    def init_branches(self):
+        cursor = self.connection.cursor()
+        for branch_id, branch in self.ymca.branches.items():
             try:
-                YMCADatabase.connection = sqlite3.connect("ymca_aquatics.db")
-            except Exception as e:
-                logging.warning(f"Error: Connection to database 'ymca_aquatics.db' not established {e}")
+                cursor.executescript(f"""
+                    BEGIN;
+                    INSERT INTO branches
+                    VALUES(
+                        '{branch_id}',
+                        '{branch.name}'
+                    );
+                    COMMIT;
+                """)
+            except sqlite3.IntegrityError:
+                logging.warning(f"Branch (ID: {branch_id}) already in table 'branches'")
             else:
-                logging.log(msg="Connection to database 'ymca_aquatics.db' established", level=logging.INFO)
-                self.w2w_users = {key:[] for key in settings.SETTINGS_DICT['branches'].keys()}
-                self.discord_users = {key:[] for key in settings.SETTINGS_DICT['branches'].keys()}
-                self.init_tables()
-                self.init_branches()
-                self.form_tables = {'chem_checks': {'last_id': 0, 'rss': settings.CHEMS_RSS_007}, 
-                      'vats': {'last_id': 0, 'rss': settings.VATS_RSS_007},
-                      'opening_checklists': {'last_id': 0, 'rss': settings.OC_RSS_007},
-                      'closing_checklists': {'last_id': 0, 'rss': settings.OC_RSS_007}
-                    }
+                logging.log(msg=f"Branch (ID: {branch_id}) inserted into table 'branches'", level=logging.INFO)
+
+
+
+
+
+
+
+
     def update_tables_rss(self):
         num_of_updates = {}
         for table, info in self.form_tables.items():
@@ -177,39 +204,6 @@ class YMCADatabase(object):
                 logging.warning(f"Closing Checklist (ID: {entry_dict['Unique ID']}) error adding to table 'closing_checklists'")
             else:
                 logging.log(msg=f"Closing Checklist (ID: {entry_dict['Unique ID']}) inserted into table 'closing_checklists'", level=logging.INFO)\
-
-    def init_tables(self):
-        cursor = self.connection.cursor()
-        with open('migrations/01_INIT.sql') as file:
-            init_sql = file.read()
-        cursor.executescript(init_sql)
-
-    def init_branches(self):
-        cursor = self.connection.cursor()
-        for branch_id, branch_info in settings.SETTINGS_DICT['branches'].items():
-            try:
-                cursor.executescript(f"""
-                    BEGIN;
-                    INSERT INTO branches
-                    VALUES(
-                        '{branch_id}',
-                        '{branch_info['name']}'
-                    );
-                    COMMIT;
-                """)
-            except sqlite3.IntegrityError:
-                logging.warning(f"Branch (ID: {branch_id}) already in table 'branches'")
-            else:
-                logging.log(msg=f"Branch (ID: {branch_id}) inserted into table 'branches'", level=logging.INFO)
-
-    def check_w2w_connection(self, branch_id, branch_info):
-        try:
-            req = requests.get(f"https://www3.whentowork.com/cgi-bin/w2wC4.dll/api/EmployeeList?key={branch_info['w2w_token']}")
-        except KeyError:
-            logging.warning(f"Branch (ID: {branch_id}) does not have W2W connected.")
-            return None
-        else:
-            return req.json()
 
     def init_w2w_users(self, branch_id):
         cursor = self.connection.cursor()

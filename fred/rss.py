@@ -1,8 +1,6 @@
 import feedparser
 from html.parser import HTMLParser
 import datetime
-import time
-import settings
 
 
 class FormstackHTMLParser(HTMLParser):
@@ -44,9 +42,3 @@ def form_rss_to_dict(link: str):
         parsed_entries[-1]['Unique ID'] = int(entry.link.split('/view/')[1].split('/')[0])
     parsed_entries.reverse()
     return parsed_entries
-
-
-#a = form_rss_to_dict(settings.CHEMS_RSS_007)
-#for ab in a: print(ab.items())
-#print(datetime.datetime.strptime('December 13, 2023 08:33 PM', '%B %d, %Y %I:%M %p'))
-#print(datetime.datetime(34, 33333, 34343, 342342))

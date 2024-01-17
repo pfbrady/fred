@@ -11,8 +11,4 @@ class PoolTestCase(TestCase):
     def test_pool_name(self):
         self.assertEqual('Complex Lap Pool', self.pool_complex_lap.name)
 
-    @skip('not set up properly')
-    def test_update_extreme_times(self):
-        self.pool_complex_lap.update_extreme_times()
-        self.assertEqual(self.pool_complex_lap, (datetime.time(5, 45), datetime.time(18, 0)))
           
