@@ -1,14 +1,12 @@
 from unittest import TestCase, skip
 from datetime import date, datetime
-from fred import YMCA
-from fred import YMCAW2WClient
+import fred
 from whentowork import Position
 from settings import SETTINGS_DICT
 
 class W2WTestCase(TestCase):
     def setUp(self):
-        YMCAW2WClient
-        ymca = YMCA('YMCA of Delaware')
+        ymca = fred.YMCA('YMCA of Delaware')
         self.ymca_w2w_client_western = ymca.branches['007'].w2w_client
         self.sample_start_date = date(2024, 1, 14)
         self.sample_end_date = date(2024, 1, 15)

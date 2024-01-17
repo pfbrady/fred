@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from .. import daxko
-from datetime import time, date
+import fred.daxko as daxko
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from pool_group import PoolGroup
+    from .pool_group import PoolGroup
 
 
 class Pool(object):

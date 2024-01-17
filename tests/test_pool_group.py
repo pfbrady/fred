@@ -1,5 +1,5 @@
 from unittest import TestCase
-from fred.ymca import YMCA, PoolGroup
+from fred import YMCA
 from settings import SETTINGS_DICT
 
 

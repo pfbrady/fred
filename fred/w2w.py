@@ -20,14 +20,16 @@ class YMCAW2WClient(Client):
         self.specialist_id: int = position_ids['specialist']
         self.supervisor_id: int = position_ids['supervisor']
     
-    def filter_shifts(self, shifts: List[Shift], dt_start: datetime = None, dt_end: datetime = None, positions: List[Position] = None):
+    @staticmethod
+    def filter_shifts(shifts: List[Shift], dt_start: datetime = None, dt_end: datetime = None, positions: List[Position] = None):
         if positions:
             shifts = list(filter(lambda shift: shift.position in positions, shifts))           
         if dt_start and dt_end:
             shifts = list(filter(lambda shift: (shift.start_datetime < dt_end and shift.end_datetime > dt_start), shifts))
         return shifts
     
-    def sort_shifts_by_date(self, shifts: List[Shift]) -> Dict[datetime.date, List[Shift]]:
+    @staticmethod
+    def sort_shifts_by_date(shifts: List[Shift]) -> Dict[datetime.date, List[Shift]]:
         shifts_dict: Dict[datetime.date, List[Shift]] = {}
         for shift in shifts:
             shift_start_date = shift.start_datetime.date()
@@ -41,9 +43,12 @@ class YMCAW2WClient(Client):
         now = datetime.now()
         today_shifts = self.get_shifts_by_date(now.date(), now.date())
         return self.filter_shifts(today_shifts, now, now, positions)
+
+    def get_shifts_openers(self, positions: List[Position]):
     
-    def unique_employees(self, shifts: List[Shift]):
-        unique_employees = []
+    @staticmethod
+    def unique_employees(shifts: List[Shift]):
+        unique_employees: List[Shift] = []
         for shift in shifts:
             if shift.employee not in unique_employees:
                 unique_employees.append(shift.employee)

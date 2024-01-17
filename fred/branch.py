@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-from ..w2w import YMCAW2WClient
+from .w2w import YMCAW2WClient
 from .pool_group import PoolGroup
 import logging
 from whentowork import Shift
@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, List, Dict, Tuple, Union
 
 if TYPE_CHECKING:
     from .ymca import YMCA
-    from ..types.w2w import YMCAW2WClientPayload
+    from .types.w2w import YMCAW2WClientPayload
 
 log = logging.getLogger(__name__)
 

@@ -1,16 +1,15 @@
+from __future__ import annotations
+
 import sqlite3
-import requests
-from settings import SETTINGS_DICT
 import logging
 import datetime
 import csv
-import datetime
-import csv
-from typing import List
+from typing import TYPE_CHECKING, List
 from difflib import SequenceMatcher
-from .ymca import YMCA
-from ..fred import Fred
-from ..rss import rss
+import fred.rss as rss
+
+if TYPE_CHECKING:
+    from .ymca import YMCA
 
 log = logging.getLogger(__name__)
 
@@ -24,12 +23,13 @@ class YMCADatabase(object):
             logging.warning(f"Error: Connection to database 'ymca_aquatics.db' not established {e}")
         else:
             log.log(msg="Connection to database 'ymca_aquatics.db' established", level=logging.INFO)
-            self.init_tables()
-            self.init_branches()
+
+    def init_database(self):
+        self.init_tables()
 
     def init_tables(self):
         cursor = self.connection.cursor()
-        with open('./migrations/01_INIT.sql') as file:
+        with open('fred/migrations/01_INIT.sql') as file:
             init_sql = file.read()
         cursor.executescript(init_sql)
 

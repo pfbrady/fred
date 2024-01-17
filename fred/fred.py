@@ -1,18 +1,15 @@
 import logging
-import settings
 from discord.ext.commands import Bot
-import whentowork as w2w
-from .ymca.database import YMCADatabase
 from .ymca import YMCA
 
 
 log = logging.getLogger(__name__)
 
 extensions = (
-    "cogs.commands2.admin.admin_commands",
-    "cogs.commands2.supervisor.w2w_commands",
-    "cogs.commands2.supervisor.formstack_commands",
-    "cogs.tasks2.fred_tasks"
+    "fred.cogs.commands2.admin.admin_commands",
+    "fred.cogs.commands2.supervisor.w2w_commands",
+    "fred.cogs.commands2.supervisor.formstack_commands",
+    "fred.cogs.tasks2.fred_tasks"
 )
 
 class Fred(Bot):
@@ -29,6 +26,7 @@ class Fred(Bot):
                 log.exception(f"Failed to load exception {e}.")
 
     async def on_ready(self):
+        self.ymca.database.init_database()
         for branch_id, branch in self.ymca.branches.items():
             if branch.guild_id in self.guilds:
                 guild = self.get_guild(branch.guild_id)

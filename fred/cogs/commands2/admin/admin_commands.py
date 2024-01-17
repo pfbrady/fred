@@ -2,9 +2,9 @@ import discord
 from fred import Fred
 
 other_extensions = (
-    "cogs.commands2.supervisor.w2w_commands",
-    "cogs.commands2.supervisor.formstack_commands",
-    "cogs.tasks2.fred_tasks"
+    "fred.cogs.commands2.supervisor.w2w_commands",
+    "fred.cogs.commands2.supervisor.formstack_commands",
+    "fred.cogs.tasks2.fred_tasks"
 )
 
 class Formstack_Commands(discord.app_commands.Group):

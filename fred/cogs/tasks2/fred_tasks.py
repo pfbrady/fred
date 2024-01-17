@@ -3,7 +3,7 @@ from discord.ext import commands, tasks
 import datetime
 import pytz
 import w2w
-import fred.ymca.pool as pl
+import fred.pool as pl
 import fred.daxko as daxko
 from typing import TYPE_CHECKING
 
@@ -20,8 +20,8 @@ class Tasks(commands.Cog):
 
     def __init__(self, fred):
         self.fred: Fred = fred
-        self.update_tables.start()
-        self.check_pool_extreme_times.start()
+        # self.update_tables.start()
+        # self.check_pool_extreme_times.start()
 
     #EVENTS
     @commands.Cog.listener()

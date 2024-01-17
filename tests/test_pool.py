@@ -1,6 +1,5 @@
 from unittest import TestCase, skip
-import datetime
-from fred.ymca import YMCA, Pool
+from fred import YMCA, Pool
 from settings import SETTINGS_DICT
 
 class PoolTestCase(TestCase):

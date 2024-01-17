@@ -7,7 +7,7 @@ import w2w
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
-    from fred.fred import Fred
+    from fred import Fred, Branch
     from whentowork import Position
 
 class W2W_Commands(discord.app_commands.Group):
@@ -21,7 +21,7 @@ class W2W_Commands(discord.app_commands.Group):
 
     @discord.app_commands.command()
     async def testy(self, interaction:discord.Interaction):
-        self.fred.database.update_tables_rss()
+        self.fred.ymca.database.update_tables_rss()
         await interaction.response.send_message(f'hrloo')
 
     async def guards_time_auto(self, interaction: discord.Interaction, current: str
@@ -39,25 +39,31 @@ class W2W_Commands(discord.app_commands.Group):
         ]
     
     @staticmethod
-    def w2w_employee_from_position_auto(self, position_auto: str)
-    
+    def palceholder(int_branch: Branch, position_auto: str, time_auto: str):
+        int_w2w_client = int_branch.w2w_client
+        positions: List[Position] = []
+        positions.append(int_w2w_client.get_position_by_id(int_w2w_client.specialist_id))
+        positions.append(int_w2w_client.get_position_by_id(int_w2w_client.supervisor_id))
+        for pool_group in int_branch.pool_groups:
+            if position_auto == 'all':
+                positions.append(int_w2w_client.get_position_by_id(pool_group.w2w_lifeguard_position_id))
+            elif position_auto in pool_group.aliases:
+                positions.append(int_w2w_client.get_position_by_id(pool_group.w2w_lifeguard_position_id))
+
+        if time_auto == 'now':
+            return int_w2w_client.get_shifts_now(positions)
+        if time_auto == 'today':
+            return int_w2w_client.get_shifts_openers()
+        
+
+        return None
 
     @discord.app_commands.command(description="guards")
     @discord.app_commands.describe(time="The time group which you intend to send a message to. Options are listed above.")
     @discord.app_commands.autocomplete(time=guards_time_auto, position=guards_pos_auto)
     async def guards(self, interaction:discord.Interaction, time: str, position: str, message: str):
         int_branch = self.fred.ymca.get_branch_by_guild_id(interaction.guild_id)
-        int_w2w_client = int_branch.w2w_client
-
-        positions: List[Position] = []
-        positions.append(int_w2w_client.get_position_by_id(int_w2w_client.specialist_id))
-        positions.append(int_w2w_client.get_position_by_id(int_w2w_client.supervisor_id))
-        for pool_group in int_branch.pool_groups:
-            if position in pool_group.aliases:
-                positions.append(int_w2w_client.get_position_by_id(pool_group.w2w_lifeguard_position_id))
-
-        
-        shifts = int_w2w_client.get_shifts_by_date()
+        positions = self.palceholder(int_branch, position, time)   
 
         w2w_users = w2w.w2w_from_default_time(time, w2w_pos)
         employees = self.fred.database.select_discord_users(w2w_users)

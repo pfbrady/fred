@@ -1,5 +1,5 @@
 from unittest import TestCase, mock
-from fred.ymca.ymca import YMCA
+from fred import YMCA
 from settings import SETTINGS_DICT
 
 
