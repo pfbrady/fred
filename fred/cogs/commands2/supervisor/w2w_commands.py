@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from fred import Fred, Branch
-    from whentowork import Position
+    from whentowork import Position, Shift
 
 class W2W_Commands(discord.app_commands.Group):
     def __init__(self, name, description, fred):
@@ -39,7 +39,7 @@ class W2W_Commands(discord.app_commands.Group):
         ]
     
     @staticmethod
-    def palceholder(int_branch: Branch, position_auto: str, time_auto: str):
+    def get_shifts_from_auto(int_branch: Branch, position_auto: str, time_auto: str):
         int_w2w_client = int_branch.w2w_client
         positions: List[Position] = []
         positions.append(int_w2w_client.get_position_by_id(int_w2w_client.specialist_id))
@@ -52,23 +52,18 @@ class W2W_Commands(discord.app_commands.Group):
 
         if time_auto == 'now':
             return int_w2w_client.get_shifts_now(positions)
-        if time_auto == 'today':
-            return int_w2w_client.get_shifts_openers()
-        
-
-        return None
+        else:
+            return []
 
     @discord.app_commands.command(description="guards")
     @discord.app_commands.describe(time="The time group which you intend to send a message to. Options are listed above.")
     @discord.app_commands.autocomplete(time=guards_time_auto, position=guards_pos_auto)
     async def guards(self, interaction:discord.Interaction, time: str, position: str, message: str):
         int_branch = self.fred.ymca.get_branch_by_guild_id(interaction.guild_id)
-        positions = self.palceholder(int_branch, position, time)   
-
-        w2w_users = w2w.w2w_from_default_time(time, w2w_pos)
-        employees = self.fred.database.select_discord_users(w2w_users)
-        employees_formatted = [f'<@{id}>' for id in employees]
-        await interaction.response.send_message(f"Notification: {' '.join(employees_formatted)}: {message}")
+        shifts = self.get_shifts_from_auto(int_branch, position, time)
+        w2w_employees = int_branch.w2w_client.unique_employees(shifts)        
+        discord_users = self.fred.ymca.database.select_discord_users([emp.w2w_employee_id for emp in w2w_employees])
+        await interaction.response.send_message(f"Notification: {' '.join([f'<@{id}>' for id in discord_users])}: {message}")
   
     async def instructors_time_auto(self, interaction: discord.Interaction, current: str
     )-> typing.List[discord.app_commands.Choice[str]]:
