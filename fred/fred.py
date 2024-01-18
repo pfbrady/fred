@@ -19,6 +19,7 @@ class Fred(Bot):
 
     async def setup_hook(self) -> None:
         self.ymca = YMCA('YMCA of Delaware')
+
         for extension in extensions:
             try:
                 await self.load_extension(extension)
@@ -26,15 +27,16 @@ class Fred(Bot):
                 log.exception(f"Failed to load exception {e}.")
 
     async def on_ready(self):
+        for branch in self.ymca.branches.values():
+            for guild in self.guilds:
+                if branch.guild_id == guild.id:
+                    branch.guild = guild
+                elif branch.test_guild_id == guild.id:
+                    branch.test_guild = guild
+
         self.ymca.database.init_database()
-        for branch_id, branch in self.ymca.branches.items():
-            if branch.guild_id in self.guilds:
-                guild = self.get_guild(branch.guild_id)
-                self.ymca.database.init_discord_users(guild.members, branch_id)
-                self.ymca.database.init_w2w_users(branch_id)
-                self.ymca.database.init_branches(branch_id)
-        self.ymca.database.load_chems()
-        self.ymca.database.load_vats()
+        for branch in self.ymca.branches.values():
+            self.ymca.database.init_database_from_branch(branch)
 
         await self.tree.sync()
         print(f'Logged in as {self.user} (ID: {self.user.id})')

@@ -3,7 +3,7 @@ import typing
 import discord
 import settings
 from discord.ext import commands, tasks
-import w2w
+import fred.w2w as w2w
 
 from typing import TYPE_CHECKING
 

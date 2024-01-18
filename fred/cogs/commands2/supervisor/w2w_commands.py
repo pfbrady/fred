@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import datetime
 import typing
 import discord
 from discord.ext import commands, tasks
-import w2w
+import fred.w2w as w2w
 
 from typing import TYPE_CHECKING, List
 

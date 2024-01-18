@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, List, Dict, Tuple, Union
 if TYPE_CHECKING:
     from .ymca import YMCA
     from .types.w2w import YMCAW2WClientPayload
+    from discord import Guild
 
 log = logging.getLogger(__name__)
 
@@ -18,9 +19,14 @@ class Branch(object):
         self.ymca: YMCA = ymca
         self.branch_id: str = branch_id
         self.name: str = branch['name']
-        self.guild_id: int = branch['guild_id']
         self.aquatic_director: str = branch['aquatic_director']
         self.aquatic_specialists: str = branch['aquatic_specialists']
+
+        self.guild_id: int = branch['guild_id']
+        self.guild: Union[Guild, None] = None
+        self.test_guild_id: int = branch['test_guild_id']
+        self.test_guild = None
+
         self.pool_groups: List[PoolGroup] = [PoolGroup(self, pool_group_id, pool_group) for pool_group_id, pool_group in branch['pool_groups'].items()]
         self._update_w2w_client(branch['w2w_custom_hostname'], branch['w2w_token'], branch['w2w_position_ids'])
         self.rss_links: Dict[str, str] = branch['rss_links']

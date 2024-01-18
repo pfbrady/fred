@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands, tasks
 import datetime
 import pytz
-import w2w
+import fred.w2w as w2w
 import fred.pool as pl
 import fred.daxko as daxko
 from typing import TYPE_CHECKING

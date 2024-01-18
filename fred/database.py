@@ -7,9 +7,11 @@ import csv
 from typing import TYPE_CHECKING, List
 from difflib import SequenceMatcher
 import fred.rss as rss
+import discord
 
 if TYPE_CHECKING:
     from .ymca import YMCA
+    from .branch import Branch
 
 log = logging.getLogger(__name__)
 
@@ -33,23 +35,133 @@ class YMCADatabase(object):
             init_sql = file.read()
         cursor.executescript(init_sql)
 
-    def init_branches(self):
+    def init_database_from_branch(self, branch: Branch):
+        self.init_branch(branch)
+        self.init_discord_users(branch)
+        self.init_w2w_users(branch)
+        self.load_chems(branch)
+        self.load_vats(branch)
+
+    def init_branch(self, branch: Branch):
         cursor = self.connection.cursor()
-        for branch_id, branch in self.ymca.branches.items():
+        try:
+            cursor.executescript(f"""
+                BEGIN;
+                INSERT INTO branches
+                VALUES(
+                    '{branch.branch_id}',
+                    '{branch.name}'
+                );
+                COMMIT;
+            """)
+        except sqlite3.IntegrityError:
+            logging.warning(f"Branch (ID: {branch.branch_id}) already in table 'branches'")
+        else:
+            logging.log(msg=f"Branch (ID: {branch.branch_id}) inserted into table 'branches'", level=logging.INFO)
+
+    def init_discord_users(self, branch: Branch) -> None:
+        cursor = self.connection.cursor()
+        for user in branch.guild.members:
             try:
                 cursor.executescript(f"""
                     BEGIN;
-                    INSERT INTO branches
+                    INSERT INTO discord_users
                     VALUES(
-                        '{branch_id}',
-                        '{branch.name}'
+                        {user.id},
+                        '{user.name}',
+                        '{user.display_name}',
+                        '{branch.branch_id}'
                     );
                     COMMIT;
                 """)
             except sqlite3.IntegrityError:
-                logging.warning(f"Branch (ID: {branch_id}) already in table 'branches'")
+                logging.warning(f"Discord User {user.display_name} (ID: {user.id}) already in table 'discord_users'")
             else:
-                logging.log(msg=f"Branch (ID: {branch_id}) inserted into table 'branches'", level=logging.INFO)
+                logging.log(msg=f"Discord User {user.display_name} (ID: {user.id}) inserted into table 'discord_users'", level=logging.INFO)
+
+    def init_w2w_users(self, branch: Branch):
+        cursor = self.connection.cursor()
+        for employee in branch.w2w_client.employees:
+            discord_id = self.handle_names(branch, employee.first_name, employee.last_name)
+            try:
+                cursor.executescript(f"""
+                    BEGIN;
+                    INSERT INTO w2w_users
+                    VALUES(
+                        {employee.w2w_employee_id},
+                        {discord_id if discord_id else 'NULL'},
+                        '{employee.first_name}',
+                        '{employee.last_name}',
+                        '{branch.branch_id}',
+                        '{employee.emails[0] if employee.emails else 'NULL'}',
+                        '{employee.custom_field_2}'
+                    );
+                    COMMIT;
+                """)
+            except sqlite3.IntegrityError:
+                logging.warning(f"W2W Employee {employee.first_name} {employee.last_name} (ID: {employee.w2w_employee_id}) already in table 'w2w_users'")
+            else:
+                logging.log(msg=f"W2W Employee {employee.first_name} {employee.last_name} (ID: {employee.w2w_employee_id}) inserted into table 'w2w_users'", level=logging.INFO)
+
+    def handle_names(self, branch: Branch, name: str, last_name: str = None) -> str:
+        if not last_name:
+            split_name = name.split(' ', 1)
+            if len(split_name) == 1:
+                name, last_name = (split_name[0], '')
+            else:
+                name, last_name = split_name
+        potential_match = (0, 0)
+        for discord_user in branch.guild.members:
+            discord_display_name_split = discord_user.display_name.lower().split(' ', 1)
+            last_name_match = SequenceMatcher(None, discord_display_name_split[-1], last_name.lower()).ratio()
+            first_name_match = SequenceMatcher(None, discord_display_name_split[0], name.lower()).ratio()
+            if last_name_match > 0.85 and first_name_match > potential_match[1]:
+                potential_match = (discord_user.id, first_name_match)
+        return potential_match[0]
+
+    def load_chems(self, branch: Branch) -> None:
+        log.log(0, "Loading Chems")
+        cursor = self.connection.cursor()
+        with open('fred/csv/chems.csv', newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                discord_id = self.handle_names(branch, row['Your Name (First)'], row['Your Name (Last)'])
+                try:
+                    cursor.executescript(f"""
+                        BEGIN;
+                        INSERT INTO chem_checks
+                        VALUES(
+                            {row['Unique ID']},
+                            {discord_id if discord_id else 'NULL'},
+                            '{self.handle_quotes(row['Your Name (First)']).strip()} {self.handle_quotes(row['Your Name (Last)']).strip()}',
+                            '{self.handle_branch(row['Branch'])}',
+                            '{row['Western']}',
+                            '{row['Location of Water Sample, Western']}',
+                            '{self.handle_rss_datetime(row['Date/Time'])}',
+                            '{self.handle_formstack_datetime(row['Time'])}',
+                            {row['Chlorine']},
+                            {row['PH']},
+                            '{row['Water Temperature']}',
+                            '{row['Total Number of Swimmers']}'
+                        );
+                        COMMIT;
+                    """)
+                except sqlite3.IntegrityError:
+                    logging.warning(f"Chem Check (ID: {row['Unique ID']}) already in table 'chem_checks'")
+                else:
+                    logging.log(msg=f"Chem Check (ID: {row['Unique ID']}) inserted into table 'chem_checks'", level=logging.INFO)
+    
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -205,53 +317,6 @@ class YMCADatabase(object):
             else:
                 logging.log(msg=f"Closing Checklist (ID: {entry_dict['Unique ID']}) inserted into table 'closing_checklists'", level=logging.INFO)\
 
-    def init_w2w_users(self, branch_id):
-        cursor = self.connection.cursor()
-        req_json = self.check_w2w_connection(branch_id, settings.SETTINGS_DICT['branches'][branch_id])
-        if req_json:
-            for employee in req_json['EmployeeList']:
-                self.w2w_users[branch_id].append(employee)
-                discord_id = self.handle_names(branch_id, employee['FIRST_NAME'], employee['LAST_NAME'])
-                try:
-                    cursor.executescript(f"""
-                        BEGIN;
-                        INSERT INTO w2w_users
-                        VALUES(
-                            {employee['W2W_EMPLOYEE_ID']},
-                            {discord_id if discord_id else 'NULL'},
-                            '{employee['FIRST_NAME']}',
-                            '{employee['LAST_NAME']}',
-                            '{branch_id if branch_id else 'NULL'}',
-                            '{self.handle_emails(employee['EMAILS'])}',
-                            '{employee['CUSTOM_2']}'
-                        );
-                        COMMIT;
-                    """)
-                except sqlite3.IntegrityError:
-                    logging.warning(f"W2W Employee {employee['FIRST_NAME']} {employee['LAST_NAME']} (ID: {employee['W2W_EMPLOYEE_ID']}) already in table 'w2w_users'")
-                else:
-                    logging.log(msg=f"W2W Employee {employee['FIRST_NAME']} {employee['LAST_NAME']} (ID: {employee['W2W_EMPLOYEE_ID']}) inserted into table 'w2w_users'", level=logging.INFO)
-    
-    def init_discord_users(self, users: List, branch_id: str) -> None:
-        cursor = self.connection.cursor()
-        for user in users:
-            self.discord_users[branch_id].append(user)
-            try:
-                cursor.executescript(f"""
-                    BEGIN;
-                    INSERT INTO discord_users
-                    VALUES(
-                        {user.id},
-                        '{user.name}',
-                        '{user.display_name}',
-                        '{branch_id}'
-                    );
-                    COMMIT;
-                """)
-            except sqlite3.IntegrityError:
-                logging.warning(f"Discord User {user.display_name} (ID: {user.id}) already in table 'discord_users'")
-            else:
-                logging.log(msg=f"Discord User {user.display_name} (ID: {user.id}) inserted into table 'discord_users'", level=logging.INFO)
 
     def select_discord_users(self, users: List):
         cursor = self.connection.cursor()
@@ -283,28 +348,6 @@ class YMCADatabase(object):
                     return 'Yes'
         else:
             return 'No'
-
-    def handle_emails(self, emails: str) -> str:
-        if "," not in emails:
-            return emails
-        else:
-            return emails.split(",")[0]
-    
-    def handle_names(self, branch_id: str, name: str, last_name: str = None) -> str:
-        if not last_name:
-            split_name = name.split(' ', 1)
-            if len(split_name) == 1:
-                name, last_name = (split_name[0], '')
-            else:
-                name, last_name = split_name
-        potential_match = (0, 0)
-        for discord_user in self.discord_users[branch_id]:
-            discord_display_name_split = discord_user.display_name.lower().split(' ', 1)
-            last_name_match = SequenceMatcher(None, discord_display_name_split[-1], last_name.lower()).ratio()
-            first_name_match = SequenceMatcher(None, discord_display_name_split[0], name.lower()).ratio()
-            if last_name_match > 0.85 and first_name_match > potential_match[1]:
-                potential_match = (discord_user.id, first_name_match)
-        return potential_match[0]
     
     def handle_rss_datetime_oc_because_consistency_apparently_doesnt_exist(self, formstack_time: str):
         return datetime.datetime.strptime(formstack_time, '%B %d, %Y %I:%M %p')
@@ -367,40 +410,6 @@ class YMCADatabase(object):
     def handle_branch(self, branch: str):
         return '007'
 
-    def load_chems(self) -> None:
-        print("load chems")
-        cursor = self.connection.cursor()
-        with open('chems.csv', newline='') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                discord_id = self.handle_names('007', row['Your Name (First)'], row['Your Name (Last)'])
-                try:
-                    cursor.executescript(f"""
-                        BEGIN;
-                        INSERT INTO chem_checks
-                        VALUES(
-                            {row['Unique ID']},
-                            {discord_id if discord_id else 'NULL'},
-                            '{self.handle_quotes(row['Your Name (First)']).strip()} {self.handle_quotes(row['Your Name (Last)']).strip()}',
-                            '{self.handle_branch(row['Branch'])}',
-                            '{row['Western']}',
-                            '{row['Location of Water Sample, Western']}',
-                            '{self.handle_rss_datetime(row['Date/Time'])}',
-                            '{self.handle_formstack_datetime(row['Time'])}',
-                            {row['Chlorine']},
-                            {row['PH']},
-                            '{row['Water Temperature']}',
-                            '{row['Total Number of Swimmers']}'
-                        );
-                        COMMIT;
-                    """)
-                except sqlite3.IntegrityError:
-                    logging.warning(f"Chem Check (ID: {row['Unique ID']}) already in table 'chem_checks'")
-                    self.form_tables['chem_checks']['last_id'] = int(row['Unique ID'])
-                else:
-                    logging.log(msg=f"Chem Check (ID: {row['Unique ID']}) inserted into table 'chem_checks'", level=logging.INFO)
-                    self.form_tables['chem_checks']['last_id'] = int(row['Unique ID'])
-    
     def load_vats(self) -> None:
         print("load vats")
         cursor = self.connection.cursor()
