@@ -20,11 +20,12 @@ class YMCADatabase(object):
         self.ymca: YMCA = ymca
         self.connection: sqlite3.Connection = None
         try:
+            sqlite3.SQLITE_CONSTRAINT_NOTNULL
             self.connection = sqlite3.connect("ymca_aquatics.db")
         except Exception as e:
-            logging.warning(f"Error: Connection to database 'ymca_aquatics.db' not established {e}")
+            log.log(logging.WARN, f"Error: Connection to database 'ymca_aquatics.db' not established. {e}")
         else:
-            log.log(msg="Connection to database 'ymca_aquatics.db' established", level=logging.INFO)
+            log.log(logging.INFO, "Connection to database 'ymca_aquatics.db' established.")
 
     def init_database(self):
         self.init_tables()
@@ -55,9 +56,9 @@ class YMCADatabase(object):
                 COMMIT;
             """)
         except sqlite3.IntegrityError:
-            logging.warning(f"Branch (ID: {branch.branch_id}) already in table 'branches'")
+            log.log(logging.WARN, f"Branch (ID: {branch.branch_id}) already in table 'branches'")
         else:
-            logging.log(msg=f"Branch (ID: {branch.branch_id}) inserted into table 'branches'", level=logging.INFO)
+            log.log(logging.INFO, f"Branch (ID: {branch.branch_id}) inserted into table 'branches'")
 
     def init_discord_users(self, branch: Branch) -> None:
         cursor = self.connection.cursor()
@@ -75,9 +76,9 @@ class YMCADatabase(object):
                     COMMIT;
                 """)
             except sqlite3.IntegrityError:
-                logging.warning(f"Discord User {user.display_name} (ID: {user.id}) already in table 'discord_users'")
+                log.log(logging.WARN, f"Discord User {user.display_name} (ID: {user.id}) already in table 'discord_users'")
             else:
-                logging.log(msg=f"Discord User {user.display_name} (ID: {user.id}) inserted into table 'discord_users'", level=logging.INFO)
+                log.log(logging.DEBUG, f"Discord User {user.display_name} (ID: {user.id}) inserted into table 'discord_users'")
 
     def init_w2w_users(self, branch: Branch):
         cursor = self.connection.cursor()
@@ -99,9 +100,9 @@ class YMCADatabase(object):
                     COMMIT;
                 """)
             except sqlite3.IntegrityError:
-                logging.warning(f"W2W Employee {employee.first_name} {employee.last_name} (ID: {employee.w2w_employee_id}) already in table 'w2w_users'")
+                log.log(logging.WARN, f"W2W Employee {employee.first_name} {employee.last_name} (ID: {employee.w2w_employee_id}) already in table 'w2w_users'")
             else:
-                logging.log(msg=f"W2W Employee {employee.first_name} {employee.last_name} (ID: {employee.w2w_employee_id}) inserted into table 'w2w_users'", level=logging.INFO)
+                log.log(logging.INFO, f"W2W Employee {employee.first_name} {employee.last_name} (ID: {employee.w2w_employee_id}) inserted into table 'w2w_users'")
 
     def handle_names(self, branch: Branch, name: str, last_name: str = None) -> str:
         if not last_name:
@@ -120,36 +121,95 @@ class YMCADatabase(object):
         return potential_match[0]
 
     def load_chems(self, branch: Branch) -> None:
-        log.log(0, "Loading Chems")
         cursor = self.connection.cursor()
-        with open('fred/csv/chems.csv', newline='') as csvfile:
+        with open('fred/data/chems.csv', newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
+                chem_uuid = row['Unique ID']
                 discord_id = self.handle_names(branch, row['Your Name (First)'], row['Your Name (Last)'])
+                discord_id = discord_id if discord_id else 'NULL'
+                name = f"{self.handle_quotes(row['Your Name (First)']).strip()} {self.handle_quotes(row['Your Name (Last)']).strip()}"
+                pool = row['Western']
+                sample_location = row['Location of Water Sample, Western']
+                sample_time = self.handle_rss_datetime(row['Date/Time'])
+                submit_time = self.handle_formstack_datetime(row['Time'])
+                chlorine = row['Chlorine']
+                ph = row['PH']
+                water_temp = row['Water Temperature']
+                num_of_swimmers = row['Total Number of Swimmers']
                 try:
                     cursor.executescript(f"""
                         BEGIN;
                         INSERT INTO chem_checks
                         VALUES(
-                            {row['Unique ID']},
-                            {discord_id if discord_id else 'NULL'},
-                            '{self.handle_quotes(row['Your Name (First)']).strip()} {self.handle_quotes(row['Your Name (Last)']).strip()}',
-                            '{self.handle_branch(row['Branch'])}',
-                            '{row['Western']}',
-                            '{row['Location of Water Sample, Western']}',
-                            '{self.handle_rss_datetime(row['Date/Time'])}',
-                            '{self.handle_formstack_datetime(row['Time'])}',
-                            {row['Chlorine']},
-                            {row['PH']},
-                            '{row['Water Temperature']}',
-                            '{row['Total Number of Swimmers']}'
+                            {chem_uuid}, {discord_id}, '{name}', '{branch.branch_id}',
+                            '{pool}', '{sample_location}', '{sample_time}',
+                            '{submit_time}', {chlorine}, {ph}, '{water_temp}',
+                            '{num_of_swimmers}'
                         );
                         COMMIT;
                     """)
                 except sqlite3.IntegrityError:
-                    logging.warning(f"Chem Check (ID: {row['Unique ID']}) already in table 'chem_checks'")
+                    log.log(logging.WARN, f"Chem Check (ID: {chem_uuid}) already in table 'chem_checks'")
                 else:
-                    logging.log(msg=f"Chem Check (ID: {row['Unique ID']}) inserted into table 'chem_checks'", level=logging.INFO)
+                    log.log(logging.INFO, f"Chem Check (ID: {chem_uuid}) inserted into table 'chem_checks'")
+
+    def load_vats(self, branch: Branch) -> None:
+        cursor = self.connection.cursor()
+        with open('fred/data/vats.csv', newline='') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                guard_discord_id = self.handle_names(
+                    branch,
+                    row['Name of Lifeguard Vigilance Tested (First)'],
+                    row['Name of Lifeguard Vigilance Tested (Last)']
+                )
+                sup_discord_id = self.handle_names(
+                    branch,
+                    row['Who monitored & conducted the vigilance test? (First)'],
+                    row['Who monitored & conducted the vigilance test? (Last)']
+                )
+                if row['Which Pool? - Western']:
+                    pool = row['Which Pool? - Western']
+                else:
+                    pool = row['Which Pool? ']
+                if row['Date & Time of Vigilance Test Conducted']:
+                    vat_datetime = datetime.datetime.strptime(row['Date & Time of Vigilance Test Conducted'],
+                        '%B %d, %Y %H:%M %p')
+                else:
+                    vat_datetime = datetime.datetime.strptime(
+                        f"{row['Date of Vigilance Test Conducted']} {row['Time of Vigilance Test Conducted ']}",
+                        '%b %d, %Y %H:%M %p'
+                    )
+                try:
+                    cursor.executescript(f"""
+                        BEGIN;
+                        INSERT INTO vats
+                        VALUES(
+                            {row['Unique ID']},
+                            {guard_discord_id if guard_discord_id else 'NULL'},
+                            '{self.handle_quotes(row['Name of Lifeguard Vigilance Tested (First)']).strip()} {self.handle_quotes(row['Name of Lifeguard Vigilance Tested (Last)']).strip()}',
+                            {sup_discord_id if sup_discord_id else 'NULL'},
+                            '{self.handle_quotes(row['Who monitored & conducted the vigilance test? (First)']).strip()} {self.handle_quotes(row['Who monitored & conducted the vigilance test? (Last)']).strip()}',
+                            '{branch.branch_id}',
+                            '{pool}',
+                            '{vat_datetime}',
+                            '{self.handle_formstack_datetime(row['Time'])}',
+                            '{self.handle_num_of_guests(row['How many guests do you believe were in the pool?'])}',
+                            '{self.handle_num_of_guards(row['Were they the only lifeguard watching the pool?'])}',
+                            '{row['What type of stimuli was used?']}',
+                            '{self.handle_depth(row['What was the water depth where the stimuli was placed?'])}',
+                            '{self.handle_pass(row['Did the lifeguard being vigilance tested respond to the stimuli?'])}',
+                            '{self.handle_response_time(row['Did the lifeguard being vigilance tested respond to the stimuli?'])}'
+                        );
+                        COMMIT;
+                    """)
+                except sqlite3.IntegrityError:
+                    logging.log(logging.WARN, f"VAT (ID: {row['Unique ID']}) already in table 'vats'")
+                    self.form_tables['vats']['last_id'] = int(row['Unique ID'])
+                else:
+                    logging.log(logging.INFO, f"VAT (ID: {row['Unique ID']}) inserted into table 'vats'")
+                    self.form_tables['vats']['last_id'] = int(row['Unique ID'])
     
 
 
@@ -244,7 +304,6 @@ class YMCADatabase(object):
             else:
                 logging.log(msg=f"VAT (ID: {entry_dict['Unique ID']}) inserted into table 'vats'", level=logging.INFO)
         elif table == "opening_checklists":
-            keys = entry_dict.keys()
             oc_uuid = entry_dict['Unique ID']
             discord_id = self.handle_names('007', entry_dict['Name of the individual completing the inspection']) if self.handle_names('007', entry_dict['Name of the individual completing the inspection']) else 'NULL'
             name = self.handle_quotes(entry_dict['Name of the individual completing the inspection'])
@@ -259,14 +318,14 @@ class YMCADatabase(object):
             aspirin_expiration_date = self.handle_rss_date(entry_dict['What is the expiration date of the Aspirin?']) if 'What is the expiration date of the Aspirin?' in keys else 'NULL'
             sup_oxygen_info = entry_dict['Supplemental Oxygen Inspection'] if 'Supplemental Oxygen Inspection' in keys else 'NULL'
             sup_oxygen_psi = int(entry_dict['What is the current pressure level of the oxygen tank?'].split(" ")[1]) if 'What is the current pressure level of the oxygen tank?' in keys else 'NULL'
-            first_aid_info = entry_dict['First Aid Kit Inspection'] if 'First Aid Kit Inspection' in keys else 'NULL'
-            chlorine = entry_dict['What is the opening CL reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?'] if 'What is the opening CL reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?' in keys else 'NULL'
-            ph = entry_dict['What is the opening PH reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?'] if 'What is the opening PH reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?' in keys else 'NULL'
-            water_temp = entry_dict['What is the opening water temperature (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?'] if 'What is the opening water temperature (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?' in keys else 'NULL'
+            first_aid_info = entry_dict.get('First Aid Kit Inspection', 'NULL')
+            chlorine = entry_dict.get('What is the opening CL reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?', 'NULL')
+            ph = entry_dict.get('What is the opening PH reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?', 'NULL')
+            water_temp = entry_dict.get('What is the opening water temperature (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?', 'NULL')
             lights_function = 'NULL'
-            handicap_chair_function = entry_dict['Does the handicap chair function as required for usage by guests?'] if 'Does the handicap chair function as required for usage by guests?' in keys else 'NULL'
-            spare_battery_present = entry_dict['Is there a spare battery available for the handicap chair?'] if 'Is there a spare battery available for the handicap chair?' in keys else 'NULL'
-            vacuum_present = entry_dict['Did you have to remove the robotic vacuum from the pool before opening?'] if 'Did you have to remove the robotic vacuum from the pool before opening?' in keys else 'NULL'
+            handicap_chair_function = entry_dict.get('Does the handicap chair function as required for usage by guests?', 'NULL')
+            spare_battery_present = entry_dict.get('Is there a spare battery available for the handicap chair?', 'NULL')
+            vacuum_present = entry_dict.get('Did you have to remove the robotic vacuum from the pool before opening?', 'NULL')
             try:
                 cursor.executescript(f"""
                     BEGIN;
@@ -406,67 +465,8 @@ class YMCADatabase(object):
             return "''".join(name.split("'"))
         else:
             return name
-        
-    def handle_branch(self, branch: str):
-        return '007'
 
-    def load_vats(self) -> None:
-        print("load vats")
-        cursor = self.connection.cursor()
-        with open('vats.csv', newline='') as csvfile:
-            reader = csv.DictReader(csvfile)
-            for row in reader:
-                guard_discord_id = self.handle_names(
-                    '007',
-                    row['Name of Lifeguard Vigilance Tested (First)'],
-                    row['Name of Lifeguard Vigilance Tested (Last)']
-                )
-                sup_discord_id = self.handle_names(
-                    '007',
-                    row['Who monitored & conducted the vigilance test? (First)'],
-                    row['Who monitored & conducted the vigilance test? (Last)']
-                )
-                if row['Which Pool? - Western']:
-                    pool = row['Which Pool? - Western']
-                else:
-                    pool = row['Which Pool? ']
-                if row['Date & Time of Vigilance Test Conducted']:
-                    vat_datetime = datetime.datetime.strptime(row['Date & Time of Vigilance Test Conducted'],
-                        '%B %d, %Y %H:%M %p')
-                else:
-                    vat_datetime = datetime.datetime.strptime(
-                        f"{row['Date of Vigilance Test Conducted']} {row['Time of Vigilance Test Conducted ']}",
-                        '%b %d, %Y %H:%M %p'
-                    )
-                try:
-                    cursor.executescript(f"""
-                        BEGIN;
-                        INSERT INTO vats
-                        VALUES(
-                            {row['Unique ID']},
-                            {guard_discord_id if guard_discord_id else 'NULL'},
-                            '{self.handle_quotes(row['Name of Lifeguard Vigilance Tested (First)']).strip()} {self.handle_quotes(row['Name of Lifeguard Vigilance Tested (Last)']).strip()}',
-                            {sup_discord_id if sup_discord_id else 'NULL'},
-                            '{self.handle_quotes(row['Who monitored & conducted the vigilance test? (First)']).strip()} {self.handle_quotes(row['Who monitored & conducted the vigilance test? (Last)']).strip()}',
-                            '{self.handle_branch(row['YMCA of Delaware Branch'])}',
-                            '{pool}',
-                            '{vat_datetime}',
-                            '{self.handle_formstack_datetime(row['Time'])}',
-                            '{self.handle_num_of_guests(row['How many guests do you believe were in the pool?'])}',
-                            '{self.handle_num_of_guards(row['Were they the only lifeguard watching the pool?'])}',
-                            '{row['What type of stimuli was used?']}',
-                            '{self.handle_depth(row['What was the water depth where the stimuli was placed?'])}',
-                            '{self.handle_pass(row['Did the lifeguard being vigilance tested respond to the stimuli?'])}',
-                            '{self.handle_response_time(row['Did the lifeguard being vigilance tested respond to the stimuli?'])}'
-                        );
-                        COMMIT;
-                    """)
-                except sqlite3.IntegrityError:
-                    logging.warning(f"VAT (ID: {row['Unique ID']}) already in table 'vats'")
-                    self.form_tables['vats']['last_id'] = int(row['Unique ID'])
-                else:
-                    logging.log(msg=f"VAT (ID: {row['Unique ID']}) inserted into table 'vats'", level=logging.INFO)
-                    self.form_tables['vats']['last_id'] = int(row['Unique ID'])
+
 
     def select_last_chem(self, pools: List[str], branch_id: str):
         cursor = self.connection.cursor()

@@ -29,6 +29,7 @@ class Branch(object):
 
         self.pool_groups: List[PoolGroup] = [PoolGroup(self, pool_group_id, pool_group) for pool_group_id, pool_group in branch['pool_groups'].items()]
         self._update_w2w_client(branch['w2w_custom_hostname'], branch['w2w_token'], branch['w2w_position_ids'])
+        
         self.rss_links: Dict[str, str] = branch['rss_links']
 
     def get_w2w_employee_by_id(self, w2w_employee_id: int):
