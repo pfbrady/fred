@@ -4,7 +4,7 @@ import sqlite3
 import logging
 import datetime
 import csv
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Union
 from difflib import SequenceMatcher
 import fred.rss as rss
 import discord
@@ -12,6 +12,8 @@ import discord
 if TYPE_CHECKING:
     from .ymca import YMCA
     from .branch import Branch
+    from .pool_group import PoolGroup
+    import whentowork
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +22,6 @@ class YMCADatabase(object):
         self.ymca: YMCA = ymca
         self.connection: sqlite3.Connection = None
         try:
-            sqlite3.SQLITE_CONSTRAINT_NOTNULL
             self.connection = sqlite3.connect("ymca_aquatics.db")
         except Exception as e:
             log.log(logging.WARN, f"Error: Connection to database 'ymca_aquatics.db' not established. {e}")
@@ -34,31 +35,71 @@ class YMCADatabase(object):
         cursor = self.connection.cursor()
         with open('fred/migrations/01_INIT.sql') as file:
             init_sql = file.read()
-        cursor.executescript(init_sql)
+        try:
+            cursor.executescript(init_sql)
+        except Exception as e:
+            log.log(logging.WARN, f"Error: Could not initialize database. {e}")
 
     def init_database_from_branch(self, branch: Branch):
-        self.init_branch(branch)
+        self.init_branches(branch)
         self.init_discord_users(branch)
         self.init_w2w_users(branch)
         self.load_chems(branch)
         self.load_vats(branch)
 
-    def init_branch(self, branch: Branch):
+    def init_branches(self, branch: Branch):
         cursor = self.connection.cursor()
         try:
             cursor.executescript(f"""
                 BEGIN;
                 INSERT INTO branches
-                VALUES(
-                    '{branch.branch_id}',
-                    '{branch.name}'
-                );
+                VALUES('{branch.branch_id}', '{branch.name}');
                 COMMIT;
             """)
         except sqlite3.IntegrityError:
-            log.log(logging.WARN, f"Branch (ID: {branch.branch_id}) already in table 'branches'")
+            log.log(logging.WARN, f"Branch {branch.name} (ID: {branch.branch_id}) already in table 'branches'")
         else:
-            log.log(logging.INFO, f"Branch (ID: {branch.branch_id}) inserted into table 'branches'")
+            log.log(logging.INFO, f"Branch {branch.name} (ID: {branch.branch_id}) inserted into table 'branches'")
+        finally:
+            self.init_pool_groups(branch)
+    
+    def init_pool_groups(self, branch: Branch):
+        cursor = self.connection.cursor()
+        for pool_group in branch.pool_groups:
+            try:
+                cursor.executescript(f"""
+                    BEGIN;
+                    INSERT INTO pool_groups
+                    VALUES('{pool_group.pool_group_id}', '{pool_group.branch_id}',
+                    '{pool_group.name}');
+                    COMMIT;
+                """)
+            except sqlite3.IntegrityError:
+                log.log(logging.WARN, f"Pool Group {pool_group.name} (ID: {pool_group.pool_group_id}) already in table 'pool_groups'")
+            except Exception as e:
+                log.log(logging.WARN, f"Error adding Pool Group: {e}")
+            else:
+                log.log(logging.INFO, f"Pool Group {pool_group.name} (ID: {pool_group.pool_group_id}) inserted into table 'pool_groups'")
+            finally:
+                self.init_pools(pool_group)
+
+    def init_pools(self, pool_group: PoolGroup):
+        cursor = self.connection.cursor()
+        for pool in pool_group.pools:
+            try:
+                cursor.executescript(f"""
+                    BEGIN;
+                    INSERT INTO pools
+                    VALUES('{pool.pool_id}', '{pool.branch_id}', '{pool.pool_group_id}',
+                    '{pool.name}');
+                    COMMIT;
+                """)
+            except sqlite3.IntegrityError:
+                log.log(logging.WARN, f"Pool {pool.name} (ID: {pool.pool_id}) already in table 'pools'")
+            except Exception as e:
+                log.log(logging.WARN, f"Error adding Pool: {e}")
+            else:
+                log.log(logging.INFO, f"Pool {pool.name} (ID: {pool.pool_id}) inserted into table 'pools'")
 
     def init_discord_users(self, branch: Branch) -> None:
         cursor = self.connection.cursor()
@@ -83,18 +124,20 @@ class YMCADatabase(object):
     def init_w2w_users(self, branch: Branch):
         cursor = self.connection.cursor()
         for employee in branch.w2w_client.employees:
-            discord_id = self.handle_names(branch, employee.first_name, employee.last_name)
+            discord_id = self.match_discord_id(branch, employee.first_name, employee.last_name)
+            discord_id = discord_id if discord_id else 'NULL'
+            email = employee.emails[0] if employee.emails else 'NULL'
             try:
                 cursor.executescript(f"""
                     BEGIN;
                     INSERT INTO w2w_users
                     VALUES(
                         {employee.w2w_employee_id},
-                        {discord_id if discord_id else 'NULL'},
+                        {discord_id},
                         '{employee.first_name}',
                         '{employee.last_name}',
                         '{branch.branch_id}',
-                        '{employee.emails[0] if employee.emails else 'NULL'}',
+                        '{email}',
                         '{employee.custom_field_2}'
                     );
                     COMMIT;
@@ -104,7 +147,7 @@ class YMCADatabase(object):
             else:
                 log.log(logging.INFO, f"W2W Employee {employee.first_name} {employee.last_name} (ID: {employee.w2w_employee_id}) inserted into table 'w2w_users'")
 
-    def handle_names(self, branch: Branch, name: str, last_name: str = None) -> str:
+    def match_discord_id(self, branch: Branch, name: str, last_name: str = None) -> str:
         if not last_name:
             split_name = name.split(' ', 1)
             if len(split_name) == 1:
@@ -119,6 +162,11 @@ class YMCADatabase(object):
             if last_name_match > 0.85 and first_name_match > potential_match[1]:
                 potential_match = (discord_user.id, first_name_match)
         return potential_match[0]
+    
+    def match_pool_id(self, branch: Branch, pool_alias: str) -> str:
+        for pool_group in branch.pool_groups:
+            for pool in pool_group.pools:
+                return pool.pool_id if pool_alias in pool.aliases else 'NULL'
 
     def load_chems(self, branch: Branch) -> None:
         cursor = self.connection.cursor()
@@ -126,11 +174,11 @@ class YMCADatabase(object):
             reader = csv.DictReader(csvfile)
             for row in reader:
                 chem_uuid = row['Unique ID']
-                discord_id = self.handle_names(branch, row['Your Name (First)'], row['Your Name (Last)'])
+                discord_id = self.match_discord_id(branch, row['Your Name (First)'], row['Your Name (Last)'])
                 discord_id = discord_id if discord_id else 'NULL'
                 name = f"{self.handle_quotes(row['Your Name (First)']).strip()} {self.handle_quotes(row['Your Name (Last)']).strip()}"
-                pool = row['Western']
-                sample_location = row['Location of Water Sample, Western']
+                pool_id = self.match_pool_id(branch, row.get('Western', ''))                
+                sample_location = row.get('Location of Water Sample, Western', 'NULL')
                 sample_time = self.handle_rss_datetime(row['Date/Time'])
                 submit_time = self.handle_formstack_datetime(row['Time'])
                 chlorine = row['Chlorine']
@@ -143,7 +191,7 @@ class YMCADatabase(object):
                         INSERT INTO chem_checks
                         VALUES(
                             {chem_uuid}, {discord_id}, '{name}', '{branch.branch_id}',
-                            '{pool}', '{sample_location}', '{sample_time}',
+                            '{pool_id}', '{sample_location}', '{sample_time}',
                             '{submit_time}', {chlorine}, {ph}, '{water_temp}',
                             '{num_of_swimmers}'
                         );
@@ -153,26 +201,32 @@ class YMCADatabase(object):
                     log.log(logging.WARN, f"Chem Check (ID: {chem_uuid}) already in table 'chem_checks'")
                 else:
                     log.log(logging.INFO, f"Chem Check (ID: {chem_uuid}) inserted into table 'chem_checks'")
+                    branch.last_chem_id = chem_uuid
 
     def load_vats(self, branch: Branch) -> None:
         cursor = self.connection.cursor()
         with open('fred/data/vats.csv', newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
-                guard_discord_id = self.handle_names(
+                vat_uuid = row['Unique ID']
+                guard_discord_id = self.match_discord_id(
                     branch,
                     row['Name of Lifeguard Vigilance Tested (First)'],
                     row['Name of Lifeguard Vigilance Tested (Last)']
                 )
-                sup_discord_id = self.handle_names(
+                guard_discord_id = guard_discord_id if guard_discord_id else 'NULL'
+                guard_name = f"{self.handle_quotes(row['Name of Lifeguard Vigilance Tested (First)']).strip()} {self.handle_quotes(row['Name of Lifeguard Vigilance Tested (Last)']).strip()}"
+                sup_discord_id = self.match_discord_id(
                     branch,
                     row['Who monitored & conducted the vigilance test? (First)'],
                     row['Who monitored & conducted the vigilance test? (Last)']
                 )
+                sup_discord_id = sup_discord_id if sup_discord_id else 'NULL'
+                sup_name = f"{self.handle_quotes(row['Who monitored & conducted the vigilance test? (First)']).strip()} {self.handle_quotes(row['Who monitored & conducted the vigilance test? (Last)']).strip()}"
                 if row['Which Pool? - Western']:
-                    pool = row['Which Pool? - Western']
+                    pool_id = self.match_pool_id(branch, row['Which Pool? - Western'])
                 else:
-                    pool = row['Which Pool? ']
+                    pool_id = self.match_pool_id(branch, row['Which Pool? '])
                 if row['Date & Time of Vigilance Test Conducted']:
                     vat_datetime = datetime.datetime.strptime(row['Date & Time of Vigilance Test Conducted'],
                         '%B %d, %Y %H:%M %p')
@@ -181,229 +235,210 @@ class YMCADatabase(object):
                         f"{row['Date of Vigilance Test Conducted']} {row['Time of Vigilance Test Conducted ']}",
                         '%b %d, %Y %H:%M %p'
                     )
+                submit_time = self.handle_formstack_datetime(row['Time'])
+                num_of_guests = self.handle_num_of_guests(row['How many guests do you believe were in the pool?'])
+                num_of_guards = self.handle_num_of_guards(row['Were they the only lifeguard watching the pool?'])
+                stimuli = row['What type of stimuli was used?']
+                depth = self.handle_depth(row['What was the water depth where the stimuli was placed?'])
+                vat_pass = self.handle_pass(row['Did the lifeguard being vigilance tested respond to the stimuli?'])
+                response_time = self.handle_response_time(row['Did the lifeguard being vigilance tested respond to the stimuli?'])
                 try:
                     cursor.executescript(f"""
                         BEGIN;
                         INSERT INTO vats
                         VALUES(
-                            {row['Unique ID']},
-                            {guard_discord_id if guard_discord_id else 'NULL'},
-                            '{self.handle_quotes(row['Name of Lifeguard Vigilance Tested (First)']).strip()} {self.handle_quotes(row['Name of Lifeguard Vigilance Tested (Last)']).strip()}',
-                            {sup_discord_id if sup_discord_id else 'NULL'},
-                            '{self.handle_quotes(row['Who monitored & conducted the vigilance test? (First)']).strip()} {self.handle_quotes(row['Who monitored & conducted the vigilance test? (Last)']).strip()}',
-                            '{branch.branch_id}',
-                            '{pool}',
-                            '{vat_datetime}',
-                            '{self.handle_formstack_datetime(row['Time'])}',
-                            '{self.handle_num_of_guests(row['How many guests do you believe were in the pool?'])}',
-                            '{self.handle_num_of_guards(row['Were they the only lifeguard watching the pool?'])}',
-                            '{row['What type of stimuli was used?']}',
-                            '{self.handle_depth(row['What was the water depth where the stimuli was placed?'])}',
-                            '{self.handle_pass(row['Did the lifeguard being vigilance tested respond to the stimuli?'])}',
-                            '{self.handle_response_time(row['Did the lifeguard being vigilance tested respond to the stimuli?'])}'
+                            {vat_uuid}, {guard_discord_id}, '{guard_name}',
+                            {sup_discord_id}, '{sup_name}', '{branch.branch_id}',
+                            '{pool_id}', '{vat_datetime}', '{submit_time}',
+                            '{num_of_guests}', '{num_of_guards}', '{stimuli}',
+                            '{depth}', '{vat_pass}', '{response_time}'
                         );
                         COMMIT;
                     """)
                 except sqlite3.IntegrityError:
                     logging.log(logging.WARN, f"VAT (ID: {row['Unique ID']}) already in table 'vats'")
-                    self.form_tables['vats']['last_id'] = int(row['Unique ID'])
                 else:
                     logging.log(logging.INFO, f"VAT (ID: {row['Unique ID']}) inserted into table 'vats'")
-                    self.form_tables['vats']['last_id'] = int(row['Unique ID'])
-    
+                    branch.last_vat_id = vat_uuid
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    def update_tables_rss(self):
-        num_of_updates = {}
-        for table, info in self.form_tables.items():
-            table_num_of_updates = 0
-            updated_rss = rss.form_rss_to_dict(info['rss'])
-            if table == 'opening_checklists' or table == 'closing_checklists':
-                updated_rss = [entry for entry in updated_rss if f"{entry['What checklist do you need to submit?'].replace(' ', '_').lower()}s" == table]
-            for entry in updated_rss:
-                if entry['Unique ID'] > info['last_id']:
-                    table_num_of_updates += 1
-                    self.insert_entry_rss(entry, table)
-                    info['last_id'] = entry['Unique ID']
-            num_of_updates[table] = table_num_of_updates
+    def update_chems_rss(self, branch: Branch):
+        num_of_updates = 0
+        chems_rss = rss.form_rss_to_dict(branch.rss_links['chems'])
+        cursor = self.connection.cursor()
+        for entry in chems_rss:
+            if entry['Unique ID'] > branch.last_chem_id:
+                chem_uuid = entry['Unique ID']
+                discord_id = self.match_discord_id(branch.branch_id, entry['Your Name'])
+                discord_id = discord_id if discord_id else 'NULL'
+                name = self.handle_quotes(entry['Your Name'])
+                pool_id = self.match_pool_id(entry['Western'])
+                sample_location = entry['Location of Water Sample, Western']
+                sample_time = self.handle_rss_datetime(entry['Date/Time'])
+                submit_time = entry['Time']
+                chlorine = entry['Chlorine']
+                ph = entry['PH']
+                water_temp = entry['Water Temperature']
+                num_of_swimmers = entry['Total Number of Swimmers'].strip()
+                try:
+                    cursor.executescript(f"""
+                        BEGIN;
+                        INSERT INTO chems
+                        VALUES(
+                            {chem_uuid}, {discord_id}, '{name}', '{branch.branch_id}',
+                            '{pool_id}', '{sample_location}', '{sample_time}',
+                            '{submit_time}', {chlorine}, {ph}, '{water_temp}',
+                            '{num_of_swimmers}'
+                        );
+                        COMMIT;
+                    """)
+                except sqlite3.IntegrityError:
+                    logging.warning(f"Chem Check (ID: {entry['Unique ID']}) already in table 'chem_checks'")
+                else:
+                    logging.log(msg=f"Chem Check (ID: {entry['Unique ID']}) inserted into table 'chem_checks'", level=logging.INFO)
+                    num_of_updates += 1
+                    branch.last_chem_id = entry['Unique ID']
         return num_of_updates
-
-    def insert_entry_rss(self, entry_dict: dict, table: str):
+    
+    def update_vats_rss(self, branch: Branch):
+        num_of_updates = 0
+        vats_rss = rss.form_rss_to_dict(branch.rss_links['vats'])
         cursor = self.connection.cursor()
-        if table == 'chem_checks':
-            discord_id = self.handle_names('007', entry_dict['Your Name'])
-            try:
-                cursor.executescript(f"""
-                    BEGIN;
-                    INSERT INTO {table}
-                    VALUES(
-                        {entry_dict['Unique ID']},
-                        {discord_id if discord_id else 'NULL'},
-                        '{self.handle_quotes(entry_dict['Your Name'])}',
-                        '{self.handle_branch(entry_dict['Branch'])}',
-                        '{entry_dict['Western']}',
-                        '{entry_dict['Location of Water Sample, Western']}',
-                        '{self.handle_rss_datetime(entry_dict['Date/Time'])}',
-                        '{entry_dict['Time']}',
-                        {entry_dict['Chlorine']},
-                        {entry_dict['PH']},
-                        '{entry_dict['Water Temperature']}',
-                        '{entry_dict['Total Number of Swimmers'].strip()}'
-                    );
-                    COMMIT;
-                """)
-            except sqlite3.IntegrityError:
-                logging.warning(f"Chem Check (ID: {entry_dict['Unique ID']}) already in table 'chem_checks'")
-            else:
-                logging.log(msg=f"Chem Check (ID: {entry_dict['Unique ID']}) inserted into table 'chem_checks'", level=logging.INFO)
-        elif table == 'vats':
-            guard_discord_id = self.handle_names('007', entry_dict['Name of Lifeguard Vigilance Tested'])
-            sup_discord_id = self.handle_names('007', entry_dict['Who monitored & conducted the vigilance test?'])
-            try:
-                cursor.executescript(f"""
-                    BEGIN;
-                    INSERT INTO vats
-                    VALUES(
-                        {entry_dict['Unique ID']},
-                        {guard_discord_id if guard_discord_id else 'NULL'},
-                        '{self.handle_quotes(entry_dict['Name of Lifeguard Vigilance Tested'])}',
-                        {sup_discord_id if sup_discord_id else 'NULL'},
-                        '{self.handle_quotes(entry_dict['Who monitored & conducted the vigilance test?'])}',
-                        '{self.handle_branch(entry_dict['YMCA of Delaware Branch'])}',
-                        '{entry_dict['Which Pool? ']}',
-                        '{self.handle_rss_datetime(f"{entry_dict['Date of Vigilance Test Conducted']} {entry_dict['Time of Vigilance Test Conducted ']}")}',
-                        '{entry_dict['Time']}',
-                        '{self.handle_num_of_guests(entry_dict['How many guests do you believe were in the pool?'])}',
-                        '{self.handle_num_of_guards(entry_dict['Were they the only lifeguard watching the pool?'])}',
-                        '{entry_dict['What type of stimuli was used?']}',
-                        '{self.handle_depth(entry_dict['What was the water depth where the stimuli was placed?'])}',
-                        '{self.handle_pass(entry_dict['Did the lifeguard being vigilance tested respond to the stimuli?'])}',
-                        '{self.handle_response_time(entry_dict['Did the lifeguard being vigilance tested respond to the stimuli?'])}'
-                    );
-                    COMMIT;
-                """)
-            except sqlite3.IntegrityError:
-                logging.warning(f"VAT (ID: {entry_dict['Unique ID']}) already in table 'vats'")
-            else:
-                logging.log(msg=f"VAT (ID: {entry_dict['Unique ID']}) inserted into table 'vats'", level=logging.INFO)
-        elif table == "opening_checklists":
-            oc_uuid = entry_dict['Unique ID']
-            discord_id = self.handle_names('007', entry_dict['Name of the individual completing the inspection']) if self.handle_names('007', entry_dict['Name of the individual completing the inspection']) else 'NULL'
-            name = self.handle_quotes(entry_dict['Name of the individual completing the inspection'])
-            branch_id = '007'
-            regulatory_info = self.handle_quotes(entry_dict[self.get_regulatory_key_from_rss_keys(keys)]) if self.get_regulatory_key_from_rss_keys(keys) else 'NULL'
-            pool = entry_dict['Which pool do you need to inspect?'] if 'Which pool do you need to inspect?' in keys else 'NULL'
-            opening_time = self.handle_rss_datetime_oc_because_consistency_apparently_doesnt_exist(entry_dict['Date & Time of Inspection']) if 'Date & Time of Inspection' in keys else 'NULL'
-            submit_time = entry_dict['Time']
-            aed_info = entry_dict['AED Inspection'] if 'AED Inspection' in keys else 'NULL'
-            adult_pads_expiration_date = self.handle_rss_date(entry_dict['What is the expiration date for the Adult Electrode Pads?']) if 'What is the expiration date for the Adult Electrode Pads?' in keys else 'NULL'
-            pediatric_pads_expiration_date = self.handle_rss_date(entry_dict['What is the expiration date for the Pediatric Electrode Pads?']) if 'What is the expiration date for the Pediatric Electrode Pads?' in keys else 'NULL'
-            aspirin_expiration_date = self.handle_rss_date(entry_dict['What is the expiration date of the Aspirin?']) if 'What is the expiration date of the Aspirin?' in keys else 'NULL'
-            sup_oxygen_info = entry_dict['Supplemental Oxygen Inspection'] if 'Supplemental Oxygen Inspection' in keys else 'NULL'
-            sup_oxygen_psi = int(entry_dict['What is the current pressure level of the oxygen tank?'].split(" ")[1]) if 'What is the current pressure level of the oxygen tank?' in keys else 'NULL'
-            first_aid_info = entry_dict.get('First Aid Kit Inspection', 'NULL')
-            chlorine = entry_dict.get('What is the opening CL reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?', 'NULL')
-            ph = entry_dict.get('What is the opening PH reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?', 'NULL')
-            water_temp = entry_dict.get('What is the opening water temperature (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?', 'NULL')
-            lights_function = 'NULL'
-            handicap_chair_function = entry_dict.get('Does the handicap chair function as required for usage by guests?', 'NULL')
-            spare_battery_present = entry_dict.get('Is there a spare battery available for the handicap chair?', 'NULL')
-            vacuum_present = entry_dict.get('Did you have to remove the robotic vacuum from the pool before opening?', 'NULL')
-            try:
-                cursor.executescript(f"""
-                    BEGIN;
-                    INSERT INTO {table}
-                    VALUES(
-                        {oc_uuid}, {discord_id}, '{name}', '{branch_id}', '{pool}', '{opening_time}', '{submit_time}', '{regulatory_info}',
-                        '{aed_info}', '{adult_pads_expiration_date}', '{pediatric_pads_expiration_date}', '{aspirin_expiration_date}',
-                        '{sup_oxygen_info}', '{sup_oxygen_psi}', '{first_aid_info}', '{chlorine}', '{ph}', '{water_temp}',
-                        '{lights_function}', '{handicap_chair_function}', '{spare_battery_present}', '{vacuum_present}'
-                    );
-                    COMMIT;
-                """)
-            except sqlite3.IntegrityError:
-                logging.warning(f"Opening Checklist (ID: {entry_dict['Unique ID']}) already in table 'opening_checklists'")
-            except sqlite3.OperationalError:
-                logging.warning(f"Opening Checklist (ID: {entry_dict['Unique ID']}) error adding to table 'opening_checklists'")
-            else:
-                logging.log(msg=f"Opening Checklist (ID: {entry_dict['Unique ID']}) inserted into table 'opening_checklists'", level=logging.INFO)
-        elif table == "closing_checklists":
-            keys = entry_dict.keys()
-            oc_uuid = entry_dict['Unique ID']
-            discord_id = self.handle_names('007', entry_dict['Name of the individual completing the inspection']) if self.handle_names('007', entry_dict['Name of the individual completing the inspection']) else 'NULL'
-            name = self.handle_quotes(entry_dict['Name of the individual completing the inspection'])
-            branch_id = '007'
-            pool = entry_dict['Which pool do you need to inspect?'] if 'Which pool do you need to inspect?' in keys else 'NULL'
-            closing_time = self.handle_rss_datetime_oc_because_consistency_apparently_doesnt_exist(entry_dict['Date & Time of Inspection']) if 'Date & Time of Inspection' in keys else 'NULL'
-            submit_time = entry_dict['Time']
-            regulatory_info = self.handle_quotes(entry_dict[self.get_regulatory_key_from_rss_keys(keys)]) if self.get_regulatory_key_from_rss_keys(keys) else 'NULL'
-            chlorine = entry_dict['What is the closing CL reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?'] if 'What is the closing CL reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?' in keys else 'NULL'
-            ph = entry_dict['What is the closing PH reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?'] if 'What is the closing PH reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?' in keys else 'NULL'
-            water_temp = entry_dict['What is the closing water temperature (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?'] if 'What is the closing water temperature (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?' in keys else 'NULL'
-            lights_function = 'NULL'
-            vacuum_function = self.handle_vacuum_closing(entry_dict)
-            try:
-                cursor.executescript(f"""
-                    BEGIN;
-                    INSERT INTO {table}
-                    VALUES(
-                        {oc_uuid}, {discord_id}, '{name}', '{branch_id}', '{pool}', '{closing_time}', '{submit_time}', '{regulatory_info}',
-                        '{chlorine}', '{ph}', '{water_temp}', '{lights_function}', '{vacuum_function}'
-                    );
-                    COMMIT;
-                """)
-            except sqlite3.IntegrityError:
-                logging.warning(f"Closing Checklist (ID: {entry_dict['Unique ID']}) already in table 'closing_checklists'")
-            except sqlite3.OperationalError:
-                logging.warning(f"Closing Checklist (ID: {entry_dict['Unique ID']}) error adding to table 'closing_checklists'")
-            else:
-                logging.log(msg=f"Closing Checklist (ID: {entry_dict['Unique ID']}) inserted into table 'closing_checklists'", level=logging.INFO)\
-
-
-    def select_discord_users(self, users: List):
+        for entry in vats_rss:
+            if entry['Unique ID'] > branch.last_vat_id:
+                vat_uuid = entry['Unique ID']
+                guard_discord_id = self.match_discord_id(branch.branch_id, entry['Name of Lifeguard Vigilance Tested'])
+                guard_discord_id = guard_discord_id if guard_discord_id else 'NULL'
+                guard_name = self.handle_quotes(entry['Your Name'])
+                sup_discord_id = self.match_discord_id(branch.branch_id, entry['Who monitored & conducted the vigilance test?'])
+                sup_discord_id = sup_discord_id if sup_discord_id else 'NULL'
+                sup_name = self.handle_quotes(entry['Who monitored & conducted the vigilance test?'])
+                pool_id = self.match_pool_id(entry['Which Pool? '])
+                vat_time = self.handle_rss_datetime(f"{entry['Date of Vigilance Test Conducted']} {entry['Time of Vigilance Test Conducted ']}")
+                submit_time = entry['Time']
+                num_of_swimmers = self.handle_num_of_guests(entry['How many guests do you believe were in the pool?'])
+                num_of_guards = self.handle_num_of_guards(entry['Were they the only lifeguard watching the pool?'])
+                stimuli = entry['What type of stimuli was used?']
+                depth = self.handle_depth(entry['What was the water depth where the stimuli was placed?'])
+                vat_pass = self.handle_pass(entry['Did the lifeguard being vigilance tested respond to the stimuli?'])
+                response_time = self.handle_response_time(entry['Did the lifeguard being vigilance tested respond to the stimuli?'])
+                try:
+                    cursor.executescript(f"""
+                        BEGIN;
+                        INSERT INTO chems
+                        VALUES(
+                            {vat_uuid}, {guard_discord_id}, '{guard_name}', '{branch.branch_id}', '{sup_discord_id}',
+                            '{sup_name}', '{pool_id}', '{vat_time}', '{submit_time}', '{num_of_swimmers}',
+                            '{num_of_guards}', {stimuli}, {depth}, '{vat_pass}', '{response_time}'
+                        );
+                        COMMIT;
+                    """)
+                except sqlite3.IntegrityError:
+                    logging.warning(f"Chem Check (ID: {entry['Unique ID']}) already in table 'chem_checks'")
+                else:
+                    logging.log(msg=f"Chem Check (ID: {entry['Unique ID']}) inserted into table 'chem_checks'", level=logging.INFO)
+                    num_of_updates += 1
+                    branch.last_vat_id = entry['Unique ID']                   
+        return num_of_updates
+    
+    def update_opening_rss(self, branch: Branch):
+        num_of_updates = 0
+        opening_rss = rss.form_rss_to_dict(branch.rss_links['oc'])
+        opening_rss: List[dict] = list(filter(lambda entry: entry['What checklist do you need to submit?'] == 'Opening Checklist', opening_rss))
         cursor = self.connection.cursor()
-        try:
-            cursor.execute(f"""
-                SELECT discord_users.id FROM discord_users
-                INNER JOIN w2w_users
-                ON discord_users.id = w2w_users.discord_id
-                WHERE w2w_users.id IN ({','.join(str(id) for id in users)})
-            """)
-        except Exception as e:
-            print(e)
-        else:
-            selected_users = []
-            for user in cursor.fetchall():
-                selected_users.append(user[0])
-            return selected_users
-        
+        for entry in opening_rss:
+            if entry['Unique ID'] > branch.last_opening_id:
+                keys = entry.keys()
+                oc_uuid = entry['Unique ID']
+                discord_id = self.match_discord_id(branch.branch_id, entry['Name of the individual completing the inspection'])
+                discord_id = discord_id if discord_id else 'NULL'
+                name = self.handle_quotes(entry['Name of the individual completing the inspection'])
+                regulatory_info = self.handle_quotes(entry[self.get_regulatory_key_from_rss_keys(keys)]) if self.get_regulatory_key_from_rss_keys(keys) else 'NULL'
+                pool = entry.get('Which pool do you need to inspect?', 'NULL')
+                opening_time = self.handle_rss_datetime_oc_because_consistency_apparently_doesnt_exist(entry['Date & Time of Inspection']) if 'Date & Time of Inspection' in keys else 'NULL'
+                submit_time = entry['Time']
+                aed_info = entry.get('AED Inspection', 'NULL')
+                adult_pads_expiration_date = self.handle_rss_date(entry['What is the expiration date for the Adult Electrode Pads?']) if 'What is the expiration date for the Adult Electrode Pads?' in keys else 'NULL'
+                pediatric_pads_expiration_date = self.handle_rss_date(entry['What is the expiration date for the Pediatric Electrode Pads?']) if 'What is the expiration date for the Pediatric Electrode Pads?' in keys else 'NULL'
+                aspirin_expiration_date = self.handle_rss_date(entry['What is the expiration date of the Aspirin?']) if 'What is the expiration date of the Aspirin?' in keys else 'NULL'
+                sup_oxygen_info = entry.get('Supplemental Oxygen Inspection', 'NULL')
+                sup_oxygen_psi = int(entry['What is the current pressure level of the oxygen tank?'].split(" ")[1]) if 'What is the current pressure level of the oxygen tank?' in keys else 'NULL'
+                first_aid_info = entry.get('First Aid Kit Inspection', 'NULL')
+                chlorine = entry.get('What is the opening CL reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?', 'NULL')
+                ph = entry.get('What is the opening PH reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?', 'NULL')
+                water_temp = entry.get('What is the opening water temperature (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?', 'NULL')
+                lights_function = 'NULL'
+                handicap_chair_function = entry.get('Does the handicap chair function as required for usage by guests?', 'NULL')
+                spare_battery_present = entry.get('Is there a spare battery available for the handicap chair?', 'NULL')
+                vacuum_present = entry.get('Did you have to remove the robotic vacuum from the pool before opening?', 'NULL')
+                try:
+                    cursor.executescript(f"""
+                        BEGIN;
+                        INSERT INTO opening_checklists
+                        VALUES(
+                            {oc_uuid}, {discord_id}, '{name}', '{branch.branch_id}', '{pool}', '{opening_time}', '{submit_time}', '{regulatory_info}',
+                            '{aed_info}', '{adult_pads_expiration_date}', '{pediatric_pads_expiration_date}', '{aspirin_expiration_date}',
+                            '{sup_oxygen_info}', '{sup_oxygen_psi}', '{first_aid_info}', '{chlorine}', '{ph}', '{water_temp}',
+                            '{lights_function}', '{handicap_chair_function}', '{spare_battery_present}', '{vacuum_present}'
+                        );
+                        COMMIT;
+                    """)
+                except sqlite3.IntegrityError:
+                    logging.log(logging.WARN, f"Opening Checklist (ID: {entry['Unique ID']}) already in table 'opening_checklists'")
+                else:
+                    logging.log(logging.INFO, f"Opening Checklist (ID: {entry['Unique ID']}) inserted into table 'opening_checklists'")
+                    num_of_updates += 1
+                    branch.last_opening_id = entry['Unique ID']
+        return num_of_updates
+    
+    def update_closing_rss(self, branch: Branch):
+        num_of_updates = 0
+        closing_rss = rss.form_rss_to_dict(branch.rss_links['oc'])
+        closing_rss: List[dict] = list(filter(lambda entry: entry['What checklist do you need to submit?'] == 'Closing Checklist', closing_rss))
+        cursor = self.connection.cursor()
+        for entry in closing_rss:
+            if entry['Unique ID'] > branch.last_closing_id:
+                keys = entry.keys()
+                oc_uuid = entry['Unique ID']
+                discord_id = self.match_discord_id(branch.branch_id, entry['Name of the individual completing the inspection'])
+                discord_id = discord_id if discord_id else 'NULL'
+                name = self.handle_quotes(entry['Name of the individual completing the inspection'])
+                pool = entry.get('Which pool do you need to inspect?', 'NULL')
+                closing_time = self.handle_rss_datetime_oc_because_consistency_apparently_doesnt_exist(entry['Date & Time of Inspection']) if 'Date & Time of Inspection' in keys else 'NULL'
+                submit_time = entry['Time']
+                regulatory_info = self.handle_quotes(entry[self.get_regulatory_key_from_rss_keys(keys)]) if self.get_regulatory_key_from_rss_keys(keys) else 'NULL'
+                chlorine = entry.get('What is the closing CL reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?', 'NULL')
+                ph = entry.get('What is the closing PH reading (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?', 'NULL')
+                water_temp = entry.get('What is the closing water temperature (Indoor Pool, Bubble Pool, 10-Lane Pool, Outdoor Complex Lap Pool)?', 'NULL')
+                lights_function = 'NULL'
+                vacuum_function = self.handle_vacuum_closing(entry)
+                try:
+                    cursor.executescript(f"""
+                        BEGIN;
+                        INSERT INTO closing_checklists
+                        VALUES(
+                            {oc_uuid}, {discord_id}, '{name}', '{branch.branch_id}', '{pool}', '{closing_time}', '{submit_time}', '{regulatory_info}',
+                            '{chlorine}', '{ph}', '{water_temp}', '{lights_function}', '{vacuum_function}'
+                        );
+                        COMMIT;
+                    """)
+                except sqlite3.IntegrityError:
+                    logging.log(logging.WARN, f"Closing Checklist (ID: {entry['Unique ID']}) already in table 'closing_checklists'")
+                else:
+                    logging.log(logging.INFO, f"Closing Checklist (ID: {entry['Unique ID']}) inserted into table 'closing_checklists'")
+                    num_of_updates += 1
+                    branch.last_closing_id = entry['Unique ID']
+        return num_of_updates
+     
     def get_regulatory_key_from_rss_keys(self, keys: list):
         for key in keys:
             if 'Regulatory' in key:
                 return key
         return None
 
-    def handle_vacuum_closing(self, entry_dict: dict):
-        if entry_dict['Does your supervisor expect you to place a robotic vacuum into the pool?'] == 'Yes':
-            if entry_dict['Have you placed the robotic vacuum in the pool?'] == 'Yes':
-                if entry_dict['Before leaving the Y, do you see the vacuum moving across the pool bottom as expected?'] == 'Yes':
+    def handle_vacuum_closing(self, entry: dict):
+        if entry.get('Does your supervisor expect you to place a robotic vacuum into the pool?') == 'Yes':
+            if entry.get('Have you placed the robotic vacuum in the pool?') == 'Yes':
+                if entry.get('Before leaving the Y, do you see the vacuum moving across the pool bottom as expected?') == 'Yes':
                     return 'Yes'
         else:
             return 'No'
@@ -467,6 +502,27 @@ class YMCADatabase(object):
             return name
 
 
+
+
+
+
+
+    def select_discord_users(self, guild: discord.Guild, employees: List[whentowork.Employee]) -> List[discord.Member]:
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(f"""
+                SELECT discord_id FROM w2w_users
+                WHERE id IN ({','.join(str(employee.w2w_employee_id) for employee in employees)})
+            """)
+        except Exception as e:
+            print(e)
+        else:
+            selected_users = []
+            for user in cursor.fetchall():
+                discord_user = guild.get_member(user[0])
+                if discord_user:
+                    selected_users.append(discord_user)
+            return selected_users
 
     def select_last_chem(self, pools: List[str], branch_id: str):
         cursor = self.connection.cursor()

@@ -8,14 +8,17 @@ if TYPE_CHECKING:
 
 
 class Pool(object):
-    def __init__(self, pool_group: PoolGroup, pool_id: str, pool: dict):
-        self.pool_group = pool_group
+    def __init__(self, branch_id: str, pool_group_id: str, pool_id: str, pool: dict):
         self.pool_id = pool_id
+        self.branch_id = branch_id
+        self.pool_group_id = pool_group_id
         self.name = pool['name']
         self.aliases = pool['aliases']
         self.is_open = False
         self.opening_time = None
         self.closing_time = None
+        self.chlorine = None
+        self.ph = None
 
     def update_deps(self):
         self.update_is_open()

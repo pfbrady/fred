@@ -1,5 +1,6 @@
 import feedparser
 from html.parser import HTMLParser
+from typing import List
 import datetime
 
 
@@ -33,7 +34,7 @@ class FormstackHTMLParser(HTMLParser):
 
 def form_rss_to_dict(link: str):
     fp = feedparser.parse(link)
-    parsed_entries = []
+    parsed_entries: List[dict] = []
     for entry in fp.entries:
         form_parser = FormstackHTMLParser()
         form_parser.feed(entry.content[0].value)

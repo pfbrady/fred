@@ -3,6 +3,20 @@ CREATE TABLE IF NOT EXISTS branches(
     id PRIMARY KEY,
     name
 );
+CREATE TABLE IF NOT EXISTS pool_groups(
+    id PRIMARY KEY,
+    branch_id,
+    name,
+    FOREIGN KEY(branch_id) REFERENCES branches(id)
+);
+CREATE TABLE IF NOT EXISTS pools(
+    id PRIMARY KEY,
+    branch_id,
+    pool_group_id,
+    name,
+    FOREIGN KEY(branch_id) REFERENCES branches(id),
+    FOREIGN KEY(pool_group_id) REFERENCES pool_groups(id)
+);
 CREATE TABLE IF NOT EXISTS discord_users(
     id PRIMARY KEY, 
     username, 

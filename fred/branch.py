@@ -5,7 +5,7 @@ from .w2w import YMCAW2WClient
 from .pool_group import PoolGroup
 import logging
 from whentowork import Shift
-from typing import TYPE_CHECKING, List, Dict, Tuple, Union
+from typing import TYPE_CHECKING, List, Dict, Tuple, Union, Any
 
 if TYPE_CHECKING:
     from .ymca import YMCA
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 class Branch(object):
-    def __init__(self, ymca: YMCA, branch_id: str, branch: dict):
+    def __init__(self, ymca: YMCA, branch_id: str, branch: Dict):
         self.ymca: YMCA = ymca
         self.branch_id: str = branch_id
         self.name: str = branch['name']
@@ -27,10 +27,15 @@ class Branch(object):
         self.test_guild_id: int = branch['test_guild_id']
         self.test_guild = None
 
-        self.pool_groups: List[PoolGroup] = [PoolGroup(self, pool_group_id, pool_group) for pool_group_id, pool_group in branch['pool_groups'].items()]
+        self.pool_groups: List[PoolGroup] = [PoolGroup(branch_id, pool_group_id, pool_group) for pool_group_id, pool_group in branch['pool_groups'].items()]
         self._update_w2w_client(branch['w2w_custom_hostname'], branch['w2w_token'], branch['w2w_position_ids'])
         
         self.rss_links: Dict[str, str] = branch['rss_links']
+        self.last_chem_id = 0
+        self.last_vat_id = 0
+        self.last_opening_id = 0
+        self.last_closing_id = 0
+        self.last_in_service_id = 0
 
     def get_w2w_employee_by_id(self, w2w_employee_id: int):
         return self.w2w_client.get_employee_by_id(w2w_employee_id)

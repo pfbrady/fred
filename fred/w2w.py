@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, date
 from typing import TYPE_CHECKING, List, Dict, Tuple, Union
-from whentowork import Shift, Position, Client
+from whentowork import Shift, Position, Client, Employee
 from whentowork.types import Shift as ShiftPayload
 import logging
 
@@ -20,6 +20,9 @@ class YMCAW2WClient(Client):
         self.director_id: int = position_ids['director']
         self.specialist_id: int = position_ids['specialist']
         self.supervisor_id: int = position_ids['supervisor']
+        self.swim_instructor_id: int = position_ids["swim_instructor"]
+        self.private_swim_instructor_id: int = position_ids["private_swim_instructor"]
+        self.swam_id: int = position_ids["swam"]
 
     def get_shifts_now(self, positions: List[Position]):
         now = datetime.now()
@@ -99,7 +102,7 @@ class YMCAW2WClient(Client):
 
     @staticmethod
     def unique_employees(shifts: List[Shift]):
-        unique_employees: List[Shift] = []
+        unique_employees: List[Employee] = []
         for shift in shifts:
             if shift.employee not in unique_employees:
                 unique_employees.append(shift.employee)

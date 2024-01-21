@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import datetime
 import typing
 import discord
@@ -11,7 +13,7 @@ if TYPE_CHECKING:
     from fred.fred import Fred
 
 class Formstack_Commands(discord.app_commands.Group):
-    def __init__(self, name, description, fred):
+    def __init__(self, name, description, fred: Fred):
         super().__init__(name=name, description=description)
         self.fred: Fred = fred
         self.chems_default_pools = ['all', 'complex', 'main', '10-lane', '8-lane', 'family', 'indoor']
@@ -95,5 +97,5 @@ class Formstack_Commands(discord.app_commands.Group):
             if interaction.guild.id == branch_info['guild_id'] or interaction.guild.id == branch_info['test_guild_id']:
                 return branch_id
 
-async def setup(fred):
+async def setup(fred: Fred):
     fred.tree.add_command(Formstack_Commands(name="form", description="test", fred=fred))
