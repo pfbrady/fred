@@ -3,8 +3,6 @@ from __future__ import annotations
 import datetime
 import typing
 import discord
-from discord.ext import commands, tasks
-import fred.w2w as w2w
 
 from typing import TYPE_CHECKING, List
 
@@ -18,25 +16,25 @@ class W2W_Commands(discord.app_commands.Group):
         self.fred: Fred = fred
         self.guards_default_times = ['now', 'earlier-today', 'later-today', 'today', 'today-closers', 'tomorrow', 'tomorrow-openers', 'tomorrow-closers', 'week', 'week-openers', 'week-closers']
         self.guards_default_pos = ['all', 'complex', 'main']
-        self.instructors_default_times = ['earlier-today', 'later-today', 'today', 'tomorrow', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+        self.instructors_default_times = ['now', 'earlier-today', 'later-today', 'today', 'tomorrow']
         self.instructors_default_pos = ['all', 'group', 'private', 'swam']
 
-    async def guards_time_auto(self, interaction: discord.Interaction, current: str
+    async def guards_time_auto(self, interaction:discord.Interaction, current: str
     )-> typing.List[discord.app_commands.Choice[str]]:
         return [
             discord.app_commands.Choice(name=default_time, value=default_time) 
             for default_time in self.guards_default_times if current.lower() in default_time.lower()
         ]
     
-    async def guards_pos_auto(self, interaction: discord.Interaction, current: str
-    )-> typing.List[discord.app_commands.Choice[str]]:
+    async def guards_pos_auto(self, interaction:discord.Interaction, current: str
+    ) -> List[discord.app_commands.Choice[str]]:
         return [
             discord.app_commands.Choice(name=default_pos, value=default_pos) 
             for default_pos in self.guards_default_pos if current.lower() in default_pos.lower()
         ]
     
     @staticmethod
-    def get_shifts_from_auto(int_branch: Branch, position_auto: str, time_auto: str):
+    def get_shifts_from_auto(int_branch: Branch, position_auto: str, time_auto: str) -> List[Shift]:
         int_w2w_client = int_branch.w2w_client
         positions: List[Position] = []
         positions.append(int_w2w_client.get_position_by_id(int_w2w_client.specialist_id))
@@ -55,6 +53,29 @@ class W2W_Commands(discord.app_commands.Group):
             return int_w2w_client.get_shifts_later(positions)
         elif time_auto == 'earlier-today':
             return int_w2w_client.get_shifts_earlier(positions)
+        elif time_auto == 'today-closers':
+            today = datetime.date.today()
+            return int_w2w_client.get_shifts_extreme(today, today, positions, False)
+        
+        elif time_auto == 'tomorrow':
+            return int_w2w_client.get_shifts_tomorrow(positions)
+        elif time_auto == 'tomorrow-openers':
+            tomorrow = datetime.date.today() + datetime.timedelta(1)
+            return int_w2w_client.get_shifts_extreme(tomorrow, tomorrow, positions, True)
+        elif time_auto == 'tomorrow-closers':
+            tomorrow = datetime.date.today() + datetime.timedelta(1)
+            return int_w2w_client.get_shifts_extreme(tomorrow, tomorrow, positions, False)
+        
+        elif time_auto == 'week':
+            today = datetime.date.today()
+            return int_w2w_client.get_shifts(today, today + datetime.timedelta(7), positions)
+        elif time_auto == 'week-openers':
+            today = datetime.date.today()
+            return int_w2w_client.get_shifts_extreme(today, today + datetime.timedelta(7), positions, True)
+        elif time_auto == 'week-closers':
+            today = datetime.date.today()
+            return int_w2w_client.get_shifts_extreme(today, today + datetime.timedelta(7), positions, False)
+                
         else:
             return []
 
@@ -71,14 +92,14 @@ class W2W_Commands(discord.app_commands.Group):
         else:
             await interaction.response.send_message(f"No lifeguards working at the indicated time. Please adjust your parameters.", ephemeral=True)
   
-    async def instructors_time_auto(self, interaction: discord.Interaction, current: str
+    async def instructors_time_auto(self, interaction:discord.Interaction, current: str
     )-> typing.List[discord.app_commands.Choice[str]]:
         return [
             discord.app_commands.Choice(name=default_time, value=default_time) 
             for default_time in self.instructors_default_times if current.lower() in default_time.lower()
         ]
     
-    async def instructors_pos_auto(self, interaction: discord.Interaction, current: str
+    async def instructors_pos_auto(self, interaction:discord.Interaction, current: str
     )-> typing.List[discord.app_commands.Choice[str]]:
         return [
             discord.app_commands.Choice(name=default_pos, value=default_pos) 
@@ -104,6 +125,11 @@ class W2W_Commands(discord.app_commands.Group):
             return int_w2w_client.get_shifts_later(positions)
         elif time_auto == 'earlier-today':
             return int_w2w_client.get_shifts_earlier(positions)
+        
+        elif time_auto == 'tomorrow':
+            return int_w2w_client.get_shifts_tomorrow(positions)
+        
+
         else:
             return []
 
