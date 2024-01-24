@@ -1,5 +1,6 @@
 import discord
 from fred import Fred
+import logging
 
 other_extensions = (
     "fred.cogs.commands2.supervisor.w2w_commands",
@@ -12,15 +13,23 @@ class Formstack_Commands(discord.app_commands.Group):
         super().__init__(name=name, description=description)
         self.fred: Fred = fred
 
+    @discord.app_commands.command(description="Unloads all Slash Commands for Fred")
     async def unload_commands(self, interaction:discord.Interaction):
         for extension in other_extensions:
-            self.fred.unload_extension(extension)
-        await interaction.response.send_message("All commands unloaded.", ephemeral=True)
+            await self.fred.unload_extension(extension)
+        await self.fred.tree.sync()
+        await interaction.response.send_message("All commands unloaded", ephemeral=True)
 
+    @discord.app_commands.command(description="Loads all Slash Commands for Fred")
     async def load_commands(self, interaction:discord.Interaction):
         for extension in other_extensions:
-            self.fred.load_extension(extension)
-        await interaction.response.send_message("All commands loaded.", ephemeral=True)
+            try:
+                await self.fred.load_extension(extension)
+            except discord.app_commands.AppCommandError:
+                logging.log(logging.INFO, f"Extension {extension} already loaded.")
+                await interaction.response.send_message("Error Loading Commands", ephemeral=True)
+        await self.fred.tree.sync()
+        await interaction.response.send_message("All commands loaded", ephemeral=True)
 
 async def setup(fred: Fred):
     fred.tree.add_command(Formstack_Commands(name="admin", description="test", fred=fred))

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from typing import TYPE_CHECKING, List, Dict, Tuple, Union
 from whentowork import Shift, Position, Client, Employee
 from whentowork.types import Shift as ShiftPayload
@@ -24,20 +24,41 @@ class YMCAW2WClient(Client):
         self.private_swim_instructor_id: int = position_ids["private_swim_instructor"]
         self.swam_id: int = position_ids["swam"]
 
-    def get_shifts_now(self, positions: List[Position]):
+    def get_shifts_now(self, positions: List[Position]) -> List[Shift]:
         now = datetime.now()
         today_shifts = self.get_shifts_by_date(now.date(), now.date())
         return self.filter_shifts(today_shifts, now, now, positions)
     
-    def get_shifts_extreme(self, date_start: date, date_end: date, positions: List[Position], opener_flag: bool = True):
+    def get_shifts_today(self, positions: List[Position]) -> List[Shift]:
+        now = datetime.now()
+        today_shifts = self.get_shifts_by_date(now.today(), now.today())
+        return self.filter_shifts(today_shifts, datetime(now.year, now.month, now.day), datetime(now.year, now.month, now.day, 23, 59), positions)
+    
+    def get_shifts_tomorrow(self, positions: List[Position]) -> List[Shift]:
+        tomorrow = datetime.now() + timedelta(days=1)
+        today_shifts = self.get_shifts_by_date(tomorrow.today(), tomorrow.today())
+        return self.filter_shifts(today_shifts, datetime(tomorrow.year, tomorrow.month, tomorrow.day), datetime(tomorrow.year, now.month, now.day, 23, 59), positions)
+    
+    def get_shifts_extreme(self, date_start: date, date_end: date, positions: List[Position], opener_flag: bool = True) -> List[Shift]:
         range_shifts = self.get_shifts_by_date(date_start, date_end)
         rs_filtered_to_position = self.filter_shifts(range_shifts, positions=positions)
         rs_filtered_dict = self._sort_shifts_by_date_and_position(rs_filtered_to_position)
-        return self._get_shifts_from_sorted(rs_filtered_dict, opener_flag)
+        return self._get_extreme_shifts_from_sorted(rs_filtered_dict, opener_flag)
     
-    def get_shifts(self, date_start: date, date_end: date, positions: List[Position]):
+    def get_shifts_later(self, positions: List[Position]) -> List[Shift]:
+        now = datetime.now()
+        today_shifts = self.get_shifts_by_date(now.date(), now.date())
+        return self.filter_shifts(today_shifts, now, datetime(now.year, now.month, now.day, 23, 59), positions)
+    
+    def get_shifts_earlier(self, positions: List[Position]) -> List[Shift]:
+        now = datetime.now()
+        today_shifts = self.get_shifts_by_date(now.date(), now.date())
+        return self.filter_shifts(today_shifts, datetime(now.year, now.month, now.day), now, positions)
+    
+    def get_shifts(self, date_start: date, date_end: date, positions: List[Position]) -> List[Shift]:
         range_shifts = self.get_shifts_by_date(date_start, date_end)
         rs_filtered_to_position = self.filter_shifts(range_shifts, positions=positions)
+        rs_filtered_dict = self._sort_shifts_by_date_and_position(rs_filtered_to_position)
 
         
 
@@ -45,12 +66,12 @@ class YMCAW2WClient(Client):
     @staticmethod
     def filter_shifts(shifts: List[Shift], dt_start: datetime = None, dt_end: datetime = None, positions: List[Position] = None):
         if positions:
-            shifts = list(filter(lambda shift: shift.position in positions, shifts))           
+            shifts = list(filter(lambda shift: shift.position in positions, shifts))    
         if dt_start and dt_end:
             shifts = list(filter(lambda shift: (shift.start_datetime < dt_end and shift.end_datetime > dt_start), shifts))
         return shifts
     
-    def _get_shifts_from_sorted(self, shifts_dict: Dict[datetime.date, Dict[Position, List[Shift]]], opener_flag: bool = True):
+    def _get_extreme_shifts_from_sorted(self, shifts_dict: Dict[datetime.date, Dict[Position, List[Shift]]], opener_flag: bool = True):
         final_shifts: List[Shift] = []
         for shift_dict_by_pos in shifts_dict.values():
             for shifts in shift_dict_by_pos.values():

@@ -3,7 +3,7 @@ from discord.ext.commands import Bot
 from .ymca import YMCA
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger()
 
 extensions = (
     "fred.cogs.commands2.admin.admin_commands",
@@ -37,7 +37,6 @@ class Fred(Bot):
         self.ymca.database.init_database()
         for branch in self.ymca.branches.values():
             self.ymca.database.init_database_from_branch(branch)
-
-        await self.tree.sync()
+            
         print(f'Logged in as {self.user} (ID: {self.user.id})')
         print('------')

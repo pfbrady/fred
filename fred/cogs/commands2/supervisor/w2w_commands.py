@@ -49,10 +49,16 @@ class W2W_Commands(discord.app_commands.Group):
 
         if time_auto == 'now':
             return int_w2w_client.get_shifts_now(positions)
+        elif time_auto == 'today':
+            return int_w2w_client.get_shifts_today(positions)
+        elif time_auto == 'later-today':
+            return int_w2w_client.get_shifts_later(positions)
+        elif time_auto == 'earlier-today':
+            return int_w2w_client.get_shifts_earlier(positions)
         else:
             return []
 
-    @discord.app_commands.command(description="guards")
+    @discord.app_commands.command(description="Sends a notification to a group of guards, filtered by time and pool")
     @discord.app_commands.describe(time="The time group which you intend to send a message to. Options are listed above.")
     @discord.app_commands.autocomplete(time=guards_time_auto, position=guards_pos_auto)
     async def guards(self, interaction:discord.Interaction, time: str, position: str, message: str):
@@ -80,7 +86,7 @@ class W2W_Commands(discord.app_commands.Group):
         ]
 
     @staticmethod
-    def get_instructor_shifts_from_auto(int_branch: Branch, position_auto: str, time_auto: str):
+    def get_instructor_shifts_from_auto(int_branch: Branch, position_auto: str, time_auto: str) -> List[Shift]:
         int_w2w_client = int_branch.w2w_client
         positions: List[Position] = []
         if position_auto == 'group' or position_auto == 'all':
@@ -92,12 +98,18 @@ class W2W_Commands(discord.app_commands.Group):
 
         if time_auto == 'now':
             return int_w2w_client.get_shifts_now(positions)
+        elif time_auto == 'today':
+            return int_w2w_client.get_shifts_today(positions)
+        elif time_auto == 'later-today':
+            return int_w2w_client.get_shifts_later(positions)
+        elif time_auto == 'earlier-today':
+            return int_w2w_client.get_shifts_earlier(positions)
         else:
             return []
 
     @discord.app_commands.describe(time="The time group which you intend to send a message to. Options are listed above.")
     @discord.app_commands.autocomplete(time=instructors_time_auto, position=instructors_pos_auto) 
-    @discord.app_commands.command(description="instructors")
+    @discord.app_commands.command(description="Sends a notification to a group of swim instructors, filtered by time and position")
     async def instructors(self, interaction:discord.Interaction, time: str, position: str, message: str):
         int_branch = self.fred.ymca.get_branch_by_guild_id(interaction.guild_id)
         shifts = self.get_instructor_shifts_from_auto(int_branch, position, time)

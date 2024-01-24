@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from .pool_group import PoolGroup
     import whentowork
 
-log = logging.getLogger(__name__)
+log = logging.getLogger()
 
 class YMCADatabase(object):
     def __init__(self, ymca: YMCA):
@@ -44,8 +44,8 @@ class YMCADatabase(object):
         self.init_branches(branch)
         self.init_discord_users(branch)
         self.init_w2w_users(branch)
-        self.load_chems(branch)
-        self.load_vats(branch)
+        # self.load_chems(branch)
+        # self.load_vats(branch)
 
     def init_branches(self, branch: Branch):
         cursor = self.connection.cursor()

@@ -10,9 +10,20 @@ class W2WTestCase(TestCase):
         self.ymca_w2w_client_western = ymca.branches['007'].w2w_client
         self.sample_start_date = date(2024, 1, 14)
         self.sample_end_date = date(2024, 1, 15)
+        self.sample_start_date2 = date(2024, 1, 23)
          
     def test_ymca_w2w_client_company_id(self):
         self.assertEqual(35181500, self.ymca_w2w_client_western.company_id)
+
+    def test_get_shifts_later(self):
+        positions = [self.ymca_w2w_client_western.get_position_by_id(self.ymca_w2w_client_western.swim_instructor_id)]
+        si_shifts_later = self.ymca_w2w_client_western.get_shifts_later(positions)
+        self.assertGreater(len(si_shifts_later), 0)
+
+    def test_get_shifts_today(self):
+        positions = [self.ymca_w2w_client_western.get_position_by_id(self.ymca_w2w_client_western.swim_instructor_id)]
+        si_shifts_later = self.ymca_w2w_client_western.get_shifts_today(positions)
+        self.assertGreater(len(si_shifts_later), 0)
 
     def test_filter_shifts(self):
         today_shifts = self.ymca_w2w_client_western.get_shifts_by_date(self.sample_start_date, self.sample_end_date)
