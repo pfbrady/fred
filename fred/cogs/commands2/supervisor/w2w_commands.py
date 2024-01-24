@@ -15,7 +15,6 @@ class W2W_Commands(discord.app_commands.Group):
         super().__init__(name=name, description=description)
         self.fred: Fred = fred
         self.guards_default_times = ['now', 'earlier-today', 'later-today', 'today', 'today-closers', 'tomorrow', 'tomorrow-openers', 'tomorrow-closers', 'week', 'week-openers', 'week-closers']
-        self.guards_default_pos = ['all', 'complex', 'main']
         self.instructors_default_times = ['now', 'earlier-today', 'later-today', 'today', 'tomorrow']
         self.instructors_default_pos = ['all', 'group', 'private', 'swam']
 
@@ -28,9 +27,13 @@ class W2W_Commands(discord.app_commands.Group):
     
     async def guards_pos_auto(self, interaction:discord.Interaction, current: str
     ) -> List[discord.app_commands.Choice[str]]:
+        guards_default_pos = ['all']
+        int_branch = self.fred.ymca.get_branch_by_guild_id(interaction.guild_id)
+        for pool_group in int_branch.pool_groups:
+            guards_default_pos.append(pool_group.name.replace(' ', '-').lower())
         return [
             discord.app_commands.Choice(name=default_pos, value=default_pos) 
-            for default_pos in self.guards_default_pos if current.lower() in default_pos.lower()
+            for default_pos in guards_default_pos if current.lower() in default_pos.lower()
         ]
     
     @staticmethod
@@ -147,4 +150,4 @@ class W2W_Commands(discord.app_commands.Group):
             await interaction.response.send_message(f"No swim instructors working at the indicated time. Please adjust your parameters.", ephemeral=True)
 
 async def setup(fred):
-    fred.tree.add_command(W2W_Commands(name="w2w", description="test", fred=fred))
+    fred.tree.add_command(W2W_Commands(name="w2w", description="Commands for fetching information from WhenToWork and sending messages to those who are working.", fred=fred))

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from .ymca import YMCA
     from .branch import Branch
     from .pool_group import PoolGroup
+    from .pool import Pool
     import whentowork
 
 log = logging.getLogger()
@@ -524,7 +525,7 @@ class YMCADatabase(object):
                     selected_users.append(discord_user)
             return selected_users
 
-    def select_last_chem(self, pools: List[str], branch_id: str):
+    def select_last_chem(self, pools: List[Pool], branch: Branch):
         cursor = self.connection.cursor()
         chems = []
         for pool in pools:
@@ -532,7 +533,7 @@ class YMCADatabase(object):
                 cursor.execute(f"""
                     SELECT discord_id, chem_uuid, pool, chlorine, ph, water_temp, num_of_swimmers, MAX(sample_time)
                     FROM chem_checks
-                    WHERE pool = '{pool}' AND branch_id = '{branch_id}';
+                    WHERE pool = '{pool.name}' AND branch_id = '{branch.branch_id}';
                 """)
             except Exception as e:
                 print(e)
