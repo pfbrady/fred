@@ -45,8 +45,8 @@ class YMCADatabase(object):
         self.init_branches(branch)
         self.init_discord_users(branch)
         self.init_w2w_users(branch)
-        # self.load_chems(branch)
-        # self.load_vats(branch)
+        self.load_chems(branch)
+        self.load_vats(branch)
 
     def init_branches(self, branch: Branch):
         cursor = self.connection.cursor()
@@ -148,7 +148,7 @@ class YMCADatabase(object):
             else:
                 log.log(logging.INFO, f"W2W Employee {employee.first_name} {employee.last_name} (ID: {employee.w2w_employee_id}) inserted into table 'w2w_users'")
 
-    def match_discord_id(self, branch: Branch, name: str, last_name: str = None) -> str:
+    def match_discord_id(self, branch: Branch, name: str, last_name: str = None) -> int:
         if not last_name:
             split_name = name.split(' ', 1)
             if len(split_name) == 1:
@@ -167,15 +167,16 @@ class YMCADatabase(object):
     def match_pool_id(self, branch: Branch, pool_alias: str) -> str:
         for pool_group in branch.pool_groups:
             for pool in pool_group.pools:
-                print()
-                return pool.pool_id if pool_alias in pool.aliases else 'NULL'
+                if pool_alias in pool.aliases:
+                    return pool.pool_id
+        return 'NULL'
 
     def load_chems(self, branch: Branch) -> None:
         cursor = self.connection.cursor()
         with open('fred/data/chems.csv', newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
-                chem_uuid = row['Unique ID']
+                chem_uuid = int(row['Unique ID'])
                 discord_id = self.match_discord_id(branch, row['Your Name (First)'], row['Your Name (Last)'])
                 discord_id = discord_id if discord_id else 'NULL'
                 name = f"{self.handle_quotes(row['Your Name (First)']).strip()} {self.handle_quotes(row['Your Name (Last)']).strip()}"
@@ -212,7 +213,7 @@ class YMCADatabase(object):
         with open('fred/data/vats.csv', newline='') as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
-                vat_uuid = row['Unique ID']
+                vat_uuid = int(row['Unique ID'])
                 guard_discord_id = self.match_discord_id(
                     branch,
                     row['Name of Lifeguard Vigilance Tested (First)'],
@@ -322,7 +323,7 @@ class YMCADatabase(object):
                 vat_uuid = entry['Unique ID']
                 guard_discord_id = self.match_discord_id(branch, entry['Name of Lifeguard Vigilance Tested'])
                 guard_discord_id = guard_discord_id if guard_discord_id else 'NULL'
-                guard_name = self.handle_quotes(entry['Who monitored & conducted the vigilance test?'])
+                guard_name = self.handle_quotes(entry['Name of Lifeguard Vigilance Tested'])
                 sup_discord_id = self.match_discord_id(branch, entry['Who monitored & conducted the vigilance test?'])
                 sup_discord_id = sup_discord_id if sup_discord_id else 'NULL'
                 sup_name = self.handle_quotes(entry['Who monitored & conducted the vigilance test?'])
@@ -527,22 +528,23 @@ class YMCADatabase(object):
 
 
 
-    def select_discord_users(self, employees: List[whentowork.Employee], branch: Branch) -> List[discord.Member]:
+    def select_discord_user(self, employee: whentowork.Employee, branch: Branch) -> Union[discord.Member, None]:
         cursor = self.connection.cursor()
         try:
             cursor.execute(f"""
                 SELECT discord_id FROM w2w_users
-                WHERE id IN ({','.join(str(employee.w2w_employee_id) for employee in employees)})
+                WHERE id = {employee.w2w_employee_id};
             """)
         except Exception as e:
             print(e)
         else:
-            selected_users = []
-            for user in cursor.fetchall():
+            user = cursor.fetchone()
+            if user:
                 discord_user = branch.guild.get_member(user[0])
                 if discord_user:
-                    selected_users.append(discord_user)
-            return selected_users
+                    return discord_user
+            else:
+                
 
     def select_last_chems(self, pools: List[Pool], branch: Branch) -> List:
         cursor = self.connection.cursor()
@@ -550,9 +552,18 @@ class YMCADatabase(object):
         for pool in pools:
             try:
                 cursor.execute(f"""
-                    SELECT discord_id, chem_uuid, pool, chlorine, ph, water_temp, num_of_swimmers, MAX(sample_time)
+                    SELECT 
+                        chem_checks.discord_id,
+                        chem_checks.chem_uuid,
+                        pools.pool_id,
+                        chem_checks.chlorine,
+                        chem_checks.ph,
+                        chem_checks.water_temp,
+                        chem_checks.num_of_swimmers,
+                        MAX(chem_checks.sample_time)
                     FROM chem_checks
-                    WHERE pool = '{pool.name}' AND branch_id = '{branch.branch_id}';
+                    LEFT JOIN pools ON vats.pool_id = pools.id
+                    WHERE pool_id = '{pool.pool_id}' AND branch_id = '{branch.branch_id}';
                 """)
             except Exception as e:
                 print(e)
@@ -564,9 +575,9 @@ class YMCADatabase(object):
         cursor = self.connection.cursor()
         try:
             cursor.execute(f"""
-                SELECT discord_id, oc_uuid, pool, sup_oxygen_psi, chlorine, ph, water_temp, MAX(submit_time)
+                SELECT discord_id, oc_uuid, pool_id, sup_oxygen_psi, chlorine, ph, water_temp, MAX(submit_time)
                 FROM opening_checklists
-                WHERE pool = '{pool}' AND branch_id = '{branch.branch_id}';
+                WHERE pool_id = '{pool.pool_id}' AND branch_id = '{branch.branch_id}';
             """)
         except Exception as e:
             print(e)
@@ -577,8 +588,9 @@ class YMCADatabase(object):
         cursor = self.connection.cursor()
         try:
             cursor.execute(f"""
-                SELECT guard_discord_id, sup_discord_id, vat_uuid, pool, num_of_swimmers, num_of_guards, stimuli, pass, response_time, MAX(vat_time)
+                SELECT vats.guard_discord_id, vats.sup_discord_id, vats.vat_uuid, pool.name, vats.num_of_swimmers, vats.num_of_guards, vats.stimuli, vats.pass, vats.response_time, MAX(vats.vat_time)
                 FROM vats
+                LEFT JOIN pools ON vats.pool_id = pools.id
                 WHERE branch_id = '{branch.branch_id}';
             """)
         except Exception as e:
@@ -590,8 +602,9 @@ class YMCADatabase(object):
         cursor = self.connection.cursor()
         try:
             cursor.execute(f"""
-                SELECT guard_discord_id, sup_discord_id, vat_uuid, pool, num_of_swimmers, num_of_guards, stimuli, pass, response_time, vat_time
+                SELECT vats.guard_discord_id, vats.sup_discord_id, vats.vat_uuid, pool.name, vats.num_of_swimmers, vats.num_of_guards, vats.stimuli, vats.pass, vats.response_time, vats.vat_time
                 FROM vats
+                LEFT JOIN pools ON vats.pool_id = pools.id
                 WHERE vat_time > '{datetime.datetime(dt_now.year, dt_now.month, 1)}' AND branch_id = '{branch.branch_id}';
             """)
         except Exception as e:

@@ -14,5 +14,5 @@ class RSSTestCase(TestCase):
         self.assertIsInstance(fred.rss.form_rss_to_dict(self.oc_rss_link), List)
 
     def test_form_rss_to_dict(self):
-        print(fred.rss.form_rss_to_dict(self.vats_rss_link)[0])
+        print(fred.rss.form_rss_to_dict(self.vats_rss_link))
         self.assertTrue(fred.rss.form_rss_to_dict(self.chems_rss_link))

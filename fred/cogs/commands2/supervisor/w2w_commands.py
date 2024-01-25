@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import typing
 import discord
 
 from typing import TYPE_CHECKING, List
@@ -19,7 +18,7 @@ class W2W_Commands(discord.app_commands.Group):
         self.instructors_default_pos = ['all', 'group', 'private', 'swam']
 
     async def guards_time_auto(self, interaction:discord.Interaction, current: str
-    )-> typing.List[discord.app_commands.Choice[str]]:
+    )-> List[discord.app_commands.Choice[str]]:
         return [
             discord.app_commands.Choice(name=default_time, value=default_time) 
             for default_time in self.guards_default_times if current.lower() in default_time.lower()
@@ -96,14 +95,14 @@ class W2W_Commands(discord.app_commands.Group):
             await interaction.response.send_message(f"No lifeguards working at the indicated time. Please adjust your parameters.", ephemeral=True)
   
     async def instructors_time_auto(self, interaction:discord.Interaction, current: str
-    )-> typing.List[discord.app_commands.Choice[str]]:
+    )-> List[discord.app_commands.Choice[str]]:
         return [
             discord.app_commands.Choice(name=default_time, value=default_time) 
             for default_time in self.instructors_default_times if current.lower() in default_time.lower()
         ]
     
     async def instructors_pos_auto(self, interaction:discord.Interaction, current: str
-    )-> typing.List[discord.app_commands.Choice[str]]:
+    )-> List[discord.app_commands.Choice[str]]:
         return [
             discord.app_commands.Choice(name=default_pos, value=default_pos) 
             for default_pos in self.instructors_default_pos if current.lower() in default_pos.lower()

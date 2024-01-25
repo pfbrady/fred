@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS chem_checks(
     discord_id,
     name,
     branch_id,
-    pool,
+    pool_id,
     sample_location,
     sample_time,
     submit_time, 
@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS chem_checks(
     water_temp,
     num_of_swimmers,
     FOREIGN KEY(discord_id) REFERENCES discord_users(id),
-    FOREIGN KEY(branch_id) REFERENCES branches(id)
+    FOREIGN KEY(branch_id) REFERENCES branches(id),
+    FOREIGN KEY(pool_id) REFERENCES pools(id)
 );
 CREATE TABLE IF NOT EXISTS vats(
     vat_uuid PRIMARY KEY NOT NULL,
@@ -69,7 +70,7 @@ CREATE TABLE IF NOT EXISTS vats(
     sup_discord_id,
     sup_name,
     branch_id,
-    pool,
+    pool_id,
     vat_time,
     submit_time,
     num_of_swimmers,
@@ -80,7 +81,8 @@ CREATE TABLE IF NOT EXISTS vats(
     response_time,
     FOREIGN KEY(guard_discord_id) REFERENCES discord_users(id),
     FOREIGN KEY(sup_discord_id) REFERENCES discord_users(id),
-    FOREIGN KEY(branch_id) REFERENCES branches(id)
+    FOREIGN KEY(branch_id) REFERENCES branches(id),
+    FOREIGN KEY(pool_id) REFERENCES pools(id)
 );
 CREATE TABLE IF NOT EXISTS opening_checklists(
     oc_uuid PRIMARY KEY NOT NULL,
