@@ -1,31 +1,31 @@
 BEGIN;
 CREATE TABLE IF NOT EXISTS branches(
-    id PRIMARY KEY,
-    name
+    id PRIMARY KEY NOT NULL,
+    name NOT NULL
 );
 CREATE TABLE IF NOT EXISTS pool_groups(
-    id PRIMARY KEY,
-    branch_id,
-    name,
+    id PRIMARY KEY NOT NULL,
+    branch_id NOT NULL,
+    name NOT NULL,
     FOREIGN KEY(branch_id) REFERENCES branches(id)
 );
 CREATE TABLE IF NOT EXISTS pools(
-    id PRIMARY KEY,
-    branch_id,
-    pool_group_id,
-    name,
+    id PRIMARY KEY NOT NULL,
+    branch_id NOT NULL,
+    pool_group_id NOT NULL,
+    name NOT NULL,
     FOREIGN KEY(branch_id) REFERENCES branches(id),
     FOREIGN KEY(pool_group_id) REFERENCES pool_groups(id)
 );
 CREATE TABLE IF NOT EXISTS discord_users(
-    id PRIMARY KEY, 
-    username, 
-    nickname,
+    id PRIMARY KEY NOT NULL, 
+    username NOT NULL, 
+    nickname NOT NULL,
     branch_id,
     FOREIGN KEY(branch_id) REFERENCES branches(id)
 );
 CREATE TABLE IF NOT EXISTS w2w_users(
-    id PRIMARY KEY,
+    id PRIMARY KEY NOT NULL,
     discord_id UNIQUE,
     first_name,
     last_name,
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS w2w_users(
     FOREIGN KEY(branch_id) REFERENCES branches(id)
 );
 CREATE TABLE IF NOT EXISTS pectora_users(
-    id PRIMARY KEY,
+    id PRIMARY KEY NOT NULL,
     discord_id UNIQUE,
     first_name,
     last_name,
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS pectora_users(
     FOREIGN KEY(branch_id) REFERENCES branches(id)
 );
 CREATE TABLE IF NOT EXISTS chem_checks(
-    chem_uuid PRIMARY KEY,
+    chem_uuid PRIMARY KEY NOT NULL,
     discord_id,
     name,
     branch_id,
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS chem_checks(
     FOREIGN KEY(branch_id) REFERENCES branches(id)
 );
 CREATE TABLE IF NOT EXISTS vats(
-    vat_uuid PRIMARY KEY,
+    vat_uuid PRIMARY KEY NOT NULL,
     guard_discord_id,
     guard_name,
     sup_discord_id,
@@ -83,11 +83,11 @@ CREATE TABLE IF NOT EXISTS vats(
     FOREIGN KEY(branch_id) REFERENCES branches(id)
 );
 CREATE TABLE IF NOT EXISTS opening_checklists(
-    oc_uuid PRIMARY KEY,
+    oc_uuid PRIMARY KEY NOT NULL,
     discord_id,
     name,
     branch_id,
-    pool,
+    checklist_group,
     opening_time,
     submit_time,
     regulatory_info,
@@ -109,11 +109,11 @@ CREATE TABLE IF NOT EXISTS opening_checklists(
     FOREIGN KEY(branch_id) REFERENCES branches(id)
 );
 CREATE TABLE IF NOT EXISTS closing_checklists(
-    oc_uuid PRIMARY KEY,
+    oc_uuid PRIMARY KEY NOT NULL,
     discord_id,
     name,
     branch_id,
-    pool,
+    checklist_group,
     closing_time,
     submit_time,
     regulatory_info,

@@ -1,4 +1,5 @@
-from typing import Dict
+from typing import Dict, List
+from discord import Guild
 from .branch import Branch
 from .database import YMCADatabase
 from settings import SETTINGS_DICT
@@ -13,3 +14,13 @@ class YMCA(object):
         for branch in self.branches.values():
             if branch.guild_id == guild_id:
                 return branch
+    
+    def setup(self, guilds: List[Guild]):
+        for branch in self.branches.values():
+            for guild in guilds:
+                if branch.guild_id == guild.id:
+                    branch.guild = guild
+                elif branch.test_guild_id == guild.id:
+                    branch.test_guild = guild
+            branch.init_w2w_positions()
+            branch.update_pool_extreme_times()

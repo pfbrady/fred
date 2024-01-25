@@ -40,8 +40,8 @@ class W2W_Commands(discord.app_commands.Group):
     def get_shifts_from_auto(int_branch: Branch, position_auto: str, time_auto: str) -> List[Shift]:
         int_w2w_client = int_branch.w2w_client
         positions: List[Position] = []
-        positions.append(int_w2w_client.get_position_by_id(int_w2w_client.specialist_id))
-        positions.append(int_w2w_client.get_position_by_id(int_w2w_client.supervisor_id))
+        positions.append(int_w2w_client.specialist)
+        positions.append(int_w2w_client.supervisor)
         for pool_group in int_branch.pool_groups:
             if position_auto == 'all':
                 positions.append(int_w2w_client.get_position_by_id(pool_group.w2w_lifeguard_position_id))
@@ -89,7 +89,7 @@ class W2W_Commands(discord.app_commands.Group):
         int_branch = self.fred.ymca.get_branch_by_guild_id(interaction.guild_id)
         shifts = self.get_shifts_from_auto(int_branch, position, time)
         w2w_employees = int_branch.w2w_client.unique_employees(shifts)        
-        discord_users = self.fred.ymca.database.select_discord_users(interaction.guild, w2w_employees)
+        discord_users = self.fred.ymca.database.select_discord_users(w2w_employees, int_branch)
         if discord_users:
             await interaction.response.send_message(f"Notification: {' '.join([user.mention for user in discord_users])}: {message}")
         else:
@@ -114,11 +114,11 @@ class W2W_Commands(discord.app_commands.Group):
         int_w2w_client = int_branch.w2w_client
         positions: List[Position] = []
         if position_auto == 'group' or position_auto == 'all':
-            positions.append(int_w2w_client.get_position_by_id(int_w2w_client.swim_instructor_id))
+            positions.append(int_w2w_client.swim_instructor)
         if position_auto == 'private' or position_auto == 'all':
-            positions.append(int_w2w_client.get_position_by_id(int_w2w_client.private_swim_instructor_id))
+            positions.append(int_w2w_client.private_swim_instructor)
         if position_auto == 'swam' or position_auto == 'all':
-            positions.append(int_w2w_client.get_position_by_id(int_w2w_client.swam_id))
+            positions.append(int_w2w_client.swam)
 
         if time_auto == 'now':
             return int_w2w_client.get_shifts_now(positions)
@@ -143,11 +143,11 @@ class W2W_Commands(discord.app_commands.Group):
         int_branch = self.fred.ymca.get_branch_by_guild_id(interaction.guild_id)
         shifts = self.get_instructor_shifts_from_auto(int_branch, position, time)
         w2w_employees = int_branch.w2w_client.unique_employees(shifts)        
-        discord_users = self.fred.ymca.database.select_discord_users(interaction.guild, w2w_employees)
+        discord_users = self.fred.ymca.database.select_discord_users(w2w_employees, int_branch.guild)
         if discord_users:
             await interaction.response.send_message(f"Notification: {' '.join([user.mention for user in discord_users])}: {message}")
         else:
             await interaction.response.send_message(f"No swim instructors working at the indicated time. Please adjust your parameters.", ephemeral=True)
 
-async def setup(fred):
+async def setup(fred: Fred):
     fred.tree.add_command(W2W_Commands(name="w2w", description="Commands for fetching information from WhenToWork and sending messages to those who are working.", fred=fred))

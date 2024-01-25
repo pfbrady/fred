@@ -167,6 +167,7 @@ class YMCADatabase(object):
     def match_pool_id(self, branch: Branch, pool_alias: str) -> str:
         for pool_group in branch.pool_groups:
             for pool in pool_group.pools:
+                print()
                 return pool.pool_id if pool_alias in pool.aliases else 'NULL'
 
     def load_chems(self, branch: Branch) -> None:
@@ -200,6 +201,8 @@ class YMCADatabase(object):
                     """)
                 except sqlite3.IntegrityError:
                     log.log(logging.WARN, f"Chem Check (ID: {chem_uuid}) already in table 'chem_checks'")
+                except Exception as e:
+                    log.log(logging.ERROR, f"Issue inserting Chem Check (ID: {chem_uuid}). Error: {e}")
                 else:
                     log.log(logging.INFO, f"Chem Check (ID: {chem_uuid}) inserted into table 'chem_checks'")
                     branch.last_chem_id = chem_uuid
@@ -258,9 +261,17 @@ class YMCADatabase(object):
                     """)
                 except sqlite3.IntegrityError:
                     logging.log(logging.WARN, f"VAT (ID: {row['Unique ID']}) already in table 'vats'")
+                except Exception as e:
+                    log.log(logging.ERROR, f"Issue inserting VAT (ID: {vat_uuid}). Error: {e}")
                 else:
                     logging.log(logging.INFO, f"VAT (ID: {row['Unique ID']}) inserted into table 'vats'")
                     branch.last_vat_id = vat_uuid
+
+    def update_rss(self, branch: Branch):
+        self.update_chems_rss(branch)
+        self.update_vats_rss(branch)
+        self.update_opening_rss(branch)
+        self.update_closing_rss(branch)
 
     def update_chems_rss(self, branch: Branch):
         num_of_updates = 0
@@ -269,10 +280,10 @@ class YMCADatabase(object):
         for entry in chems_rss:
             if entry['Unique ID'] > branch.last_chem_id:
                 chem_uuid = entry['Unique ID']
-                discord_id = self.match_discord_id(branch.branch_id, entry['Your Name'])
+                discord_id = self.match_discord_id(branch, entry['Your Name'])
                 discord_id = discord_id if discord_id else 'NULL'
                 name = self.handle_quotes(entry['Your Name'])
-                pool_id = self.match_pool_id(entry['Western'])
+                pool_id = self.match_pool_id(branch, entry['Western'])
                 sample_location = entry['Location of Water Sample, Western']
                 sample_time = self.handle_rss_datetime(entry['Date/Time'])
                 submit_time = entry['Time']
@@ -283,7 +294,7 @@ class YMCADatabase(object):
                 try:
                     cursor.executescript(f"""
                         BEGIN;
-                        INSERT INTO chems
+                        INSERT INTO chem_checks
                         VALUES(
                             {chem_uuid}, {discord_id}, '{name}', '{branch.branch_id}',
                             '{pool_id}', '{sample_location}', '{sample_time}',
@@ -294,6 +305,8 @@ class YMCADatabase(object):
                     """)
                 except sqlite3.IntegrityError:
                     logging.warning(f"Chem Check (ID: {entry['Unique ID']}) already in table 'chem_checks'")
+                except Exception as e:
+                    log.log(logging.ERROR, f"Issue inserting Chem Check (ID: {chem_uuid}). Error: {e}")
                 else:
                     logging.log(msg=f"Chem Check (ID: {entry['Unique ID']}) inserted into table 'chem_checks'", level=logging.INFO)
                     num_of_updates += 1
@@ -307,13 +320,13 @@ class YMCADatabase(object):
         for entry in vats_rss:
             if entry['Unique ID'] > branch.last_vat_id:
                 vat_uuid = entry['Unique ID']
-                guard_discord_id = self.match_discord_id(branch.branch_id, entry['Name of Lifeguard Vigilance Tested'])
+                guard_discord_id = self.match_discord_id(branch, entry['Name of Lifeguard Vigilance Tested'])
                 guard_discord_id = guard_discord_id if guard_discord_id else 'NULL'
-                guard_name = self.handle_quotes(entry['Your Name'])
-                sup_discord_id = self.match_discord_id(branch.branch_id, entry['Who monitored & conducted the vigilance test?'])
+                guard_name = self.handle_quotes(entry['Who monitored & conducted the vigilance test?'])
+                sup_discord_id = self.match_discord_id(branch, entry['Who monitored & conducted the vigilance test?'])
                 sup_discord_id = sup_discord_id if sup_discord_id else 'NULL'
                 sup_name = self.handle_quotes(entry['Who monitored & conducted the vigilance test?'])
-                pool_id = self.match_pool_id(entry['Which Pool? '])
+                pool_id = self.match_pool_id(branch, entry['Which Pool? '])
                 vat_time = self.handle_rss_datetime(f"{entry['Date of Vigilance Test Conducted']} {entry['Time of Vigilance Test Conducted ']}")
                 submit_time = entry['Time']
                 num_of_swimmers = self.handle_num_of_guests(entry['How many guests do you believe were in the pool?'])
@@ -325,18 +338,20 @@ class YMCADatabase(object):
                 try:
                     cursor.executescript(f"""
                         BEGIN;
-                        INSERT INTO chems
+                        INSERT INTO vats
                         VALUES(
-                            {vat_uuid}, {guard_discord_id}, '{guard_name}', '{branch.branch_id}', '{sup_discord_id}',
-                            '{sup_name}', '{pool_id}', '{vat_time}', '{submit_time}', '{num_of_swimmers}',
-                            '{num_of_guards}', {stimuli}, {depth}, '{vat_pass}', '{response_time}'
+                            {vat_uuid}, {guard_discord_id}, '{guard_name}', '{sup_discord_id}', '{sup_name}', 
+                            '{branch.branch_id}', '{pool_id}', '{vat_time}', '{submit_time}', '{num_of_swimmers}',
+                            '{num_of_guards}', '{stimuli}', {depth}, '{vat_pass}', '{response_time}'
                         );
                         COMMIT;
                     """)
                 except sqlite3.IntegrityError:
-                    logging.warning(f"Chem Check (ID: {entry['Unique ID']}) already in table 'chem_checks'")
+                    logging.warning(f"VAT (ID: {entry['Unique ID']}) already in table 'vats'")
+                except Exception as e:
+                    log.log(logging.ERROR, f"Issue inserting VAT (ID: {vat_uuid}). Error: {e}")
                 else:
-                    logging.log(msg=f"Chem Check (ID: {entry['Unique ID']}) inserted into table 'chem_checks'", level=logging.INFO)
+                    logging.log(msg=f"VAT (ID: {entry['Unique ID']}) inserted into table 'vats'", level=logging.INFO)
                     num_of_updates += 1
                     branch.last_vat_id = entry['Unique ID']                   
         return num_of_updates
@@ -350,11 +365,11 @@ class YMCADatabase(object):
             if entry['Unique ID'] > branch.last_opening_id:
                 keys = entry.keys()
                 oc_uuid = entry['Unique ID']
-                discord_id = self.match_discord_id(branch.branch_id, entry['Name of the individual completing the inspection'])
+                discord_id = self.match_discord_id(branch, entry['Name of the individual completing the inspection'])
                 discord_id = discord_id if discord_id else 'NULL'
                 name = self.handle_quotes(entry['Name of the individual completing the inspection'])
                 regulatory_info = self.handle_quotes(entry[self.get_regulatory_key_from_rss_keys(keys)]) if self.get_regulatory_key_from_rss_keys(keys) else 'NULL'
-                pool = entry.get('Which pool do you need to inspect?', 'NULL')
+                checklist_group = entry.get('Which pool do you need to inspect?', 'NULL')
                 opening_time = self.handle_rss_datetime_oc_because_consistency_apparently_doesnt_exist(entry['Date & Time of Inspection']) if 'Date & Time of Inspection' in keys else 'NULL'
                 submit_time = entry['Time']
                 aed_info = entry.get('AED Inspection', 'NULL')
@@ -376,7 +391,7 @@ class YMCADatabase(object):
                         BEGIN;
                         INSERT INTO opening_checklists
                         VALUES(
-                            {oc_uuid}, {discord_id}, '{name}', '{branch.branch_id}', '{pool}', '{opening_time}', '{submit_time}', '{regulatory_info}',
+                            {oc_uuid}, {discord_id}, '{name}', '{branch.branch_id}', '{checklist_group}', '{opening_time}', '{submit_time}', '{regulatory_info}',
                             '{aed_info}', '{adult_pads_expiration_date}', '{pediatric_pads_expiration_date}', '{aspirin_expiration_date}',
                             '{sup_oxygen_info}', '{sup_oxygen_psi}', '{first_aid_info}', '{chlorine}', '{ph}', '{water_temp}',
                             '{lights_function}', '{handicap_chair_function}', '{spare_battery_present}', '{vacuum_present}'
@@ -385,6 +400,8 @@ class YMCADatabase(object):
                     """)
                 except sqlite3.IntegrityError:
                     logging.log(logging.WARN, f"Opening Checklist (ID: {entry['Unique ID']}) already in table 'opening_checklists'")
+                except Exception as e:
+                    log.log(logging.ERROR, f"Issue inserting Opening Checklist (ID: {oc_uuid}). Error: {e}")
                 else:
                     logging.log(logging.INFO, f"Opening Checklist (ID: {entry['Unique ID']}) inserted into table 'opening_checklists'")
                     num_of_updates += 1
@@ -400,10 +417,10 @@ class YMCADatabase(object):
             if entry['Unique ID'] > branch.last_closing_id:
                 keys = entry.keys()
                 oc_uuid = entry['Unique ID']
-                discord_id = self.match_discord_id(branch.branch_id, entry['Name of the individual completing the inspection'])
+                discord_id = self.match_discord_id(branch, entry['Name of the individual completing the inspection'])
                 discord_id = discord_id if discord_id else 'NULL'
                 name = self.handle_quotes(entry['Name of the individual completing the inspection'])
-                pool = entry.get('Which pool do you need to inspect?', 'NULL')
+                checklist_group = entry.get('Which pool do you need to inspect?', 'NULL')
                 closing_time = self.handle_rss_datetime_oc_because_consistency_apparently_doesnt_exist(entry['Date & Time of Inspection']) if 'Date & Time of Inspection' in keys else 'NULL'
                 submit_time = entry['Time']
                 regulatory_info = self.handle_quotes(entry[self.get_regulatory_key_from_rss_keys(keys)]) if self.get_regulatory_key_from_rss_keys(keys) else 'NULL'
@@ -417,13 +434,15 @@ class YMCADatabase(object):
                         BEGIN;
                         INSERT INTO closing_checklists
                         VALUES(
-                            {oc_uuid}, {discord_id}, '{name}', '{branch.branch_id}', '{pool}', '{closing_time}', '{submit_time}', '{regulatory_info}',
+                            {oc_uuid}, {discord_id}, '{name}', '{branch.branch_id}', '{checklist_group}', '{closing_time}', '{submit_time}', '{regulatory_info}',
                             '{chlorine}', '{ph}', '{water_temp}', '{lights_function}', '{vacuum_function}'
                         );
                         COMMIT;
                     """)
                 except sqlite3.IntegrityError:
                     logging.log(logging.WARN, f"Closing Checklist (ID: {entry['Unique ID']}) already in table 'closing_checklists'")
+                except Exception as e:
+                    log.log(logging.ERROR, f"Issue inserting Closing Checklist (ID: {oc_uuid}). Error: {e}")
                 else:
                     logging.log(logging.INFO, f"Closing Checklist (ID: {entry['Unique ID']}) inserted into table 'closing_checklists'")
                     num_of_updates += 1
@@ -508,7 +527,7 @@ class YMCADatabase(object):
 
 
 
-    def select_discord_users(self, guild: discord.Guild, employees: List[whentowork.Employee]) -> List[discord.Member]:
+    def select_discord_users(self, employees: List[whentowork.Employee], branch: Branch) -> List[discord.Member]:
         cursor = self.connection.cursor()
         try:
             cursor.execute(f"""
@@ -520,12 +539,12 @@ class YMCADatabase(object):
         else:
             selected_users = []
             for user in cursor.fetchall():
-                discord_user = guild.get_member(user[0])
+                discord_user = branch.guild.get_member(user[0])
                 if discord_user:
                     selected_users.append(discord_user)
             return selected_users
 
-    def select_last_chem(self, pools: List[Pool], branch: Branch):
+    def select_last_chems(self, pools: List[Pool], branch: Branch) -> List:
         cursor = self.connection.cursor()
         chems = []
         for pool in pools:
@@ -541,49 +560,39 @@ class YMCADatabase(object):
                 chems.append(cursor.fetchone())
         return chems
     
-    def pool_to_opening_type(self, pool: str):
-        if pool == 'Complex Lap Pool':
-            return 'Bubble Pool'
-        elif pool == 'Complex Family Pool':
-            return 'Outdoor Complex'
-        else:
-            return pool
-    
-    def select_last_opening(self, pool: str, branch_id: str):
+    def select_last_opening(self, pool: Pool, branch: Branch):
         cursor = self.connection.cursor()
-        oc_pool = self.pool_to_opening_type(pool)
-        chems = []
         try:
             cursor.execute(f"""
                 SELECT discord_id, oc_uuid, pool, sup_oxygen_psi, chlorine, ph, water_temp, MAX(submit_time)
                 FROM opening_checklists
-                WHERE pool = '{oc_pool}' AND branch_id = '{branch_id}';
+                WHERE pool = '{pool}' AND branch_id = '{branch.branch_id}';
             """)
         except Exception as e:
             print(e)
         else:
             return cursor.fetchone()
 
-    def select_last_vat(self, branch_id):
+    def select_last_vat(self, branch: Branch):
         cursor = self.connection.cursor()
         try:
             cursor.execute(f"""
                 SELECT guard_discord_id, sup_discord_id, vat_uuid, pool, num_of_swimmers, num_of_guards, stimuli, pass, response_time, MAX(vat_time)
                 FROM vats
-                WHERE branch_id = '{branch_id}';
+                WHERE branch_id = '{branch.branch_id}';
             """)
         except Exception as e:
             print(e)
         else:
-            return [cursor.fetchone()]
+            return cursor.fetchone()
         
-    def select_vats_month(self, dt_now: datetime.datetime, branch_id):
+    def select_vats_month(self, dt_now: datetime.datetime, branch: Branch):
         cursor = self.connection.cursor()
         try:
             cursor.execute(f"""
                 SELECT guard_discord_id, sup_discord_id, vat_uuid, pool, num_of_swimmers, num_of_guards, stimuli, pass, response_time, vat_time
                 FROM vats
-                WHERE vat_time > '{datetime.datetime(dt_now.year, dt_now.month, 1)}' AND branch_id = '{branch_id}';
+                WHERE vat_time > '{datetime.datetime(dt_now.year, dt_now.month, 1)}' AND branch_id = '{branch.branch_id}';
             """)
         except Exception as e:
             print(e)

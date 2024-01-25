@@ -1,6 +1,6 @@
-from typing import TypedDict
+import typing
 
-class YMCAW2WClientPayload(TypedDict):
+class YMCAW2WClientPayload(typing.TypedDict):
     director: int
     specialist: int
     supervisor: int

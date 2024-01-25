@@ -18,6 +18,7 @@ class Pool(object):
         self.is_open: bool = False
         self.opening_time: datetime.datetime = None
         self.closing_time: datetime.datetime = None
+        self.checklists: List[str] = pool['checklists']
         self.chlorine: int = None
         self.ph: float = None
 

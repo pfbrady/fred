@@ -14,15 +14,15 @@ log = logging.getLogger(__name__)
 class YMCAW2WClient(Client):
     def __init__(self, hostname:str, token: str, position_ids: YMCAW2WClientPayload):
         super().__init__(hostname, token, logger=log)
-        self._update_w2w_position_ids(position_ids)
+        self._update_w2w_positions(position_ids)
 
-    def _update_w2w_position_ids(self, position_ids: YMCAW2WClientPayload):
-        self.director_id: int = position_ids['director']
-        self.specialist_id: int = position_ids['specialist']
-        self.supervisor_id: int = position_ids['supervisor']
-        self.swim_instructor_id: int = position_ids["swim_instructor"]
-        self.private_swim_instructor_id: int = position_ids["private_swim_instructor"]
-        self.swam_id: int = position_ids["swam"]
+    def _update_w2w_positions(self, position_ids: YMCAW2WClientPayload):
+        self.director: Position = self.get_position_by_id(position_ids['director'])
+        self.specialist: Position = self.get_position_by_id(position_ids['specialist'])
+        self.supervisor: Position = self.get_position_by_id(position_ids['supervisor'])
+        self.swim_instructor: Position = self.get_position_by_id(position_ids["swim_instructor"])
+        self.private_swim_instructor: Position = self.get_position_by_id(position_ids["private_swim_instructor"])
+        self.swam: Position = self.get_position_by_id(position_ids["swam"])
 
     def get_shifts_now(self, positions: List[Position]) -> List[Shift]:
         now = datetime.now()

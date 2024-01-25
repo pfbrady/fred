@@ -7,11 +7,12 @@ class RSSTestCase(TestCase):
         ymca = fred.YMCA('YMCA of Delaware')
         self.chems_rss_link = ymca.branches['007'].rss_links['chems']
         self.oc_rss_link = ymca.branches['007'].rss_links['oc']
+        self.vats_rss_link = ymca.branches['007'].rss_links['vats']
          
     def test_form_rss_to_dict_return_type(self):
         self.assertIsInstance(fred.rss.form_rss_to_dict(self.chems_rss_link), List)
         self.assertIsInstance(fred.rss.form_rss_to_dict(self.oc_rss_link), List)
 
     def test_form_rss_to_dict(self):
-        print(fred.rss.form_rss_to_dict(self.chems_rss_link))
+        print(fred.rss.form_rss_to_dict(self.vats_rss_link)[0])
         self.assertTrue(fred.rss.form_rss_to_dict(self.chems_rss_link))
