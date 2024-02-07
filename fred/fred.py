@@ -1,4 +1,5 @@
 import logging
+from discord import Member
 from discord.ext.commands import Bot
 from .ymca import YMCA
 

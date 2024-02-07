@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from fred.fred import Fred
+    from fred import ChemCheck
+    from typing import List
 
 class Formstack_Commands(discord.app_commands.Group):
     def __init__(self, name, description, fred: Fred):
@@ -35,16 +37,20 @@ class Formstack_Commands(discord.app_commands.Group):
     @discord.app_commands.autocomplete(pool=chems_pool_auto)
     async def chems(self, interaction:discord.Interaction, pool: str):
         int_branch = self.fred.ymca.get_branch_by_guild_id(interaction.guild_id)
-        selected_chems = []
+        selected_chems: List[ChemCheck] = []
         for pool_group in int_branch.pool_groups:
             if pool in pool_group.aliases:
-                selected_chems.append(self.fred.ymca.database.select_last_chems(pool_group.pools, int_branch))
+                selected_chems.append(self.fred.ymca.database.select_last_chems(int_branch, pool_group.pools))
             else:
                 for pool_obj in pool_group.pools:
                     if pool in pool_obj.aliases:
-                        selected_chems.append(self.fred.ymca.database.select_last_chems([pool_obj], int_branch))
-                
-        chems_formatted = [f'Name: <@{chem[0]}>\n Chem Check ID: {chem[1]}\n Pool: {chem[2]}\n Chlorine: {chem[3]}\t\tpH: {chem[4]}\n Temperature: {chem[5]}\n Number of Swimmers: {chem[6]}\n Time: {chem[7]}\n\n' for chem in selected_chems]
+                        selected_chems.append(self.fred.ymca.database.select_last_chems(int_branch, [pool_obj]))
+
+        chems_formatted = []
+        for chem in selected_chems:
+            pool = int_branch.get_pool_by_pool_id(chem.pool_id)
+            pool_name = pool.name if pool else 'Pool Name Error'
+            chems_formatted.append(f'Name: <@{chem.discord_id}>\n Chem Check ID: {chem.chem_uuid}\n Pool: {pool_name}\n Chlorine: {chem.chlorine}\t\tpH: {chem.ph}\n Temperature: {chem.water_temp}\n Number of Swimmers: {chem.num_of_swimmers}\n Time: {chem.sample_time}\n\n')
         await interaction.response.send_message(f"# Summary of Chem Checks:\n{''.join(chems_formatted)}", ephemeral=True)
 
     @discord.app_commands.command(description="vats")
@@ -66,19 +72,19 @@ class Formstack_Commands(discord.app_commands.Group):
                 vats_by_guard[discord_user.id] = 0
 
         # Adding the number of VATs to each guards total
-        vats = self.fred.ymca.database.select_vats_month(now, int_branch)
+        vats = self.fred.ymca.database.select_vats_month(int_branch, now)
         for vat in vats:
-            if vat[0] in vats_by_guard:
-                vats_by_guard[vat[0]] += 1
+            if vat.guard_name in vats_by_guard:
+                vats_by_guard[vat.guard_name] += 1
 
         # Splitting the guards into who has and hasn't been VATed for the month
         vbg_complete = {}
         vbg_incomplete = {}
-        for vat in vats_by_guard:
-            if vats_by_guard.get(vat) > 0:
-                vbg_complete[vat] = vats_by_guard.get(vat)
+        for guard in vats_by_guard:
+            if vats_by_guard.get(guard) > 0:
+                vbg_complete[guard] = vats_by_guard.get(guard)
             else:
-                vbg_incomplete[vat] = vats_by_guard.get(vat)
+                vbg_incomplete[guard] = vats_by_guard.get(guard)
 
         vbg_complete = {k: v for k, v in sorted(vbg_complete.items(), key=lambda item: item[1], reverse=True)}
         vats_complete_formatted = [f'Guard: <@{vat}>: {vbg_complete.get(vat)}\n' for vat in vbg_complete]

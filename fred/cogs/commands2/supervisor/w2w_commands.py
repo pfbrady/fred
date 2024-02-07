@@ -88,7 +88,7 @@ class W2W_Commands(discord.app_commands.Group):
         int_branch = self.fred.ymca.get_branch_by_guild_id(interaction.guild_id)
         shifts = self.get_shifts_from_auto(int_branch, position, time)
         w2w_employees = int_branch.w2w_client.unique_employees(shifts)        
-        discord_users = self.fred.ymca.database.select_discord_users(w2w_employees, int_branch)
+        discord_users = self.fred.ymca.database.select_discord_users(int_branch, w2w_employees)
         if discord_users:
             await interaction.response.send_message(f"Notification: {' '.join([user.mention for user in discord_users])}: {message}")
         else:
@@ -142,7 +142,7 @@ class W2W_Commands(discord.app_commands.Group):
         int_branch = self.fred.ymca.get_branch_by_guild_id(interaction.guild_id)
         shifts = self.get_instructor_shifts_from_auto(int_branch, position, time)
         w2w_employees = int_branch.w2w_client.unique_employees(shifts)        
-        discord_users = self.fred.ymca.database.select_discord_users(w2w_employees, int_branch.guild)
+        discord_users = self.fred.ymca.database.select_discord_users(int_branch, w2w_employees)
         if discord_users:
             await interaction.response.send_message(f"Notification: {' '.join([user.mention for user in discord_users])}: {message}")
         else:

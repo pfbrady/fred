@@ -1,4 +1,6 @@
 from .branch import *
+from .chem import *
+from .database_helper import *
 from .database import *
 from .daxko import *
 from .fred import *

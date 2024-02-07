@@ -9,3 +9,4 @@ class YMCADatabaseCase(TestCase):
          
     def test_database_connection(self):
         self.assertEqual(True, bool(self.database.connection))
+

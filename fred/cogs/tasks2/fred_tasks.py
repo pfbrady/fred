@@ -24,6 +24,21 @@ class Tasks(commands.Cog):
         self.update_tables.start()
         self.check_pool_extreme_times.start()
 
+    def cog_unload(self):
+        self.update_tables.cancel()
+        self.check_pool_extreme_times.cancel()
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: discord.Member):
+        if member.guild.system_channel is not None:
+            
+            await member.guild.system_channel.send(f'Welcome {member.mention} to {member.guild.name}!')
+    async def on_member_join(self, context, member):
+        for guild in self.fred.guilds:
+            for channel in guild.text_channels:
+                if channel.name == 'test3':
+                    await context.send(f'Member {member.mention} has joined!')
+
     @tasks.loop(minutes=30)
     async def update_tables(self):
         for branch in self.fred.ymca.branches.values():
@@ -38,7 +53,7 @@ class Tasks(commands.Cog):
                                 positions: List[Position] = [branch.w2w_client.specialist, branch.w2w_client.supervisor, pool_group.w2w_lifeguard_position]
                                 shifts = branch.w2w_client.get_shifts_now(positions)
                                 w2w_employees = branch.w2w_client.unique_employees(shifts)        
-                                discord_users = self.fred.ymca.database.select_discord_users(w2w_employees, branch)
+                                discord_users = self.fred.ymca.database.select_discord_users(branch, w2w_employees)
                                 if (last_chem[0][7] < str(now - datetime.timedelta(hours=2, minutes=30))
                                     and now > pool.opening_time + datetime.timedelta(hours=2, minutes=30)
                                     and now < pool.closing_time - datetime.timedelta(minutes=30)
@@ -46,11 +61,16 @@ class Tasks(commands.Cog):
                                     await channel.send(f"Notification: {' '.join([user.mention for user in discord_users])} Please submit a chemical check for the {pool.name}.")
                                 for checklist in pool.checklists:
                                     last_opening = self.fred.ymca.database.select_last_opening(checklist, branch)
-                                if (last_opening[7] < str(now - datetime.timedelta(hours=16))
-                                    and now > pool.opening_time + datetime.timedelta(hours=1, minutes=30)
-                                    and now < pool.closing_time - datetime.timedelta(minutes=30)
-                                ):
-                                    await channel.send(f"Notification: {' '.join([user.mention for user in discord_users])} Please submit an opening checklist for the {pool.name}.")
+                                    if (last_opening[7] < str(now - datetime.timedelta(hours=16))
+                                        and now > pool.opening_time + datetime.timedelta(hours=1, minutes=30)
+                                        and now < pool.closing_time - datetime.timedelta(minutes=30)
+                                    ):
+                                        await channel.send(f"Notification: {' '.join([user.mention for user in discord_users])} Please submit an opening checklist for the {pool.name}.")
+
+    @update_tables.before_loop
+    async def before_update_tables(self):
+        print('Waiting for Fred to be ready before initializing update_tables task')
+        await self.fred.wait_until_ready()
 
     @tasks.loop(time=datetime.time(hour=0, minute=15, tzinfo=pytz.timezone('US/Eastern')))
     async def check_pool_extreme_times(self):

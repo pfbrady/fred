@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, List, Dict, Tuple, Union, Any
 
 if TYPE_CHECKING:
     from .ymca import YMCA
+    from .pool import Pool
     from .types.w2w import YMCAW2WClientPayload
     from discord import Guild
 
@@ -19,6 +20,7 @@ class Branch(object):
         self.ymca: YMCA = ymca
         self.branch_id: str = branch_id
         self.name: str = branch['name']
+        self.aliases: List[str] = branch['aliases']
         self.aquatic_director: str = branch['aquatic_director']
         self.aquatic_specialists: str = branch['aquatic_specialists']
 
@@ -38,6 +40,13 @@ class Branch(object):
         self.last_opening_id: int = 0
         self.last_closing_id: int = 0
         self.last_in_service_id: int = 0
+
+    def get_pool_by_pool_id(self, pool_id: str) -> Union[Pool, None]:
+        for pool_group in self.pool_groups:
+            for pool in pool_group.pools:
+                if pool_id == pool.pool_id:
+                    return pool
+        return None
 
     def get_w2w_employee_by_id(self, w2w_employee_id: int):
         return self.w2w_client.get_employee_by_id(w2w_employee_id)

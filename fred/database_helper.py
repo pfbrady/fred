@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Union, List
 import datetime
+import logging
 from difflib import SequenceMatcher
 
 if TYPE_CHECKING:
     from .branch import Branch
 
-def match_discord_id(branch: Branch, name: str, last_name: str = None) -> Union[int, str]:
+def match_discord_id(branch: Branch, name: str, last_name: str = None) -> Union[int, None]:
     if not last_name:
         split_name = name.split(' ', 1)
         if len(split_name) == 1:
@@ -21,34 +22,60 @@ def match_discord_id(branch: Branch, name: str, last_name: str = None) -> Union[
         first_name_match = SequenceMatcher(None, discord_display_name_split[0], name.lower()).ratio()
         if last_name_match > 0.85 and first_name_match > potential_match[1]:
             potential_match = (discord_user.id, first_name_match)
-    return potential_match[0] if potential_match[0] else 'NULL'
+    return potential_match[0] if potential_match[0] else None
 
 def match_pool_id(branch: Branch, pool_alias: str) -> str:
     for pool_group in branch.pool_groups:
         for pool in pool_group.pools:
             if pool_alias in pool.aliases:
                 return pool.pool_id
-    return 'NULL'
-
-def match_branch_name_alias(branch: Branch, keys: List[str]):
-    for key in keys:
-        if key == branch.name:
-            return key
-        if key in branch.aliases:
-            return key
     return ''
 
-def handle_quotes(*names: str):
+def match_pool_id_from_keys(branch: Branch, keys: List[str]):
+    for key in keys:
+        if key == branch.name:
+            return match_pool_id(branch, key)
+        if key in branch.aliases:
+            return match_pool_id(branch, key)
+    return ''
+
+def handle_quotes(*names: str) -> str:
     return ' '.join([name.strip().replace("'", "''") for name in names])
 
-def handle_rss_datetime_oc_because_consistency_apparently_doesnt_exist(self, formstack_time: str):
-    return datetime.datetime.strptime(formstack_time, '%B %d, %Y %I:%M %p')
+def handle_fs_rss_date(date_string: str) -> Union[datetime.date, None]:
+        d_formatted = None
+        try:
+            d_formatted = datetime.datetime.strptime(date_string, '%b %d, %Y').date()
+        except Exception as e:
+            logging.log(logging.WARN, f"RSS date ({date_string}) not formatted correcty: {e}")
+        
+        return d_formatted
 
-def handle_rss_datetime(self, formstack_time: str):
-    return datetime.datetime.strptime(formstack_time, '%b %d, %Y %I:%M %p')
+def handle_fs_rss_datetime_full_month(time_str: str) -> Union[datetime.datetime, None]:
+    dt_formatted = None
+    try:
+        dt_formatted = datetime.datetime.strptime(time_str, '%B %d, %Y %I:%M %p')
+    except Exception as e:
+        logging.log(logging.WARN, f"RSS datetime ({time_str}) not formatted correcty: {e}")
+    
+    return dt_formatted
 
-def handle_rss_date(self, formstack_time: str):
-    return datetime.datetime.strptime(formstack_time, '%b %d, %Y')
+def handle_fs_rss_datetime(time_str: str) -> Union[datetime.datetime, None]:
+    dt_formatted = None
+    try:
+        dt_formatted = datetime.datetime.strptime(time_str, '%b %d, %Y %I:%M %p')
+        return dt_formatted
+    except Exception as e:
+        logging.log(logging.WARN, f"RSS datetime ({time_str}) not formatted correcty: {e}")
 
-def handle_formstack_datetime(self, formstack_time: str):
-    return datetime.datetime.strptime(formstack_time, '%Y-%m-%d %H:%M:%S')
+    return dt_formatted
+
+def handle_fs_csv_datetime(time_str: str) -> Union[datetime.datetime, None]:
+    dt_formatted = None
+    try:
+        dt_formatted = datetime.datetime.strptime(time_str, '%Y-%m-%d %H:%M:%S')
+        return dt_formatted
+    except Exception as e:
+        logging.log(logging.WARN, f"Formstack datetime ({time_str}) not formatted correcty: {e}")
+
+    return dt_formatted

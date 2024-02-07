@@ -77,7 +77,6 @@ CREATE TABLE IF NOT EXISTS vats(
     num_of_guards,
     stimuli,
     depth,
-    pass,
     response_time,
     FOREIGN KEY(guard_discord_id) REFERENCES discord_users(id),
     FOREIGN KEY(sup_discord_id) REFERENCES discord_users(id),
