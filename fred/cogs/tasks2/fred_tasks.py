@@ -17,8 +17,6 @@ from itertools import cycle
 #status = cycle(['status 1', 'status 2', 'status 3'])
 
 class Tasks(commands.Cog):
-
-
     def __init__(self, fred):
         self.fred: Fred = fred
         self.update_tables.start()
@@ -28,40 +26,30 @@ class Tasks(commands.Cog):
         self.update_tables.cancel()
         self.check_pool_extreme_times.cancel()
 
-    @commands.Cog.listener()
-    async def on_member_join(self, member: discord.Member):
-        if member.guild.system_channel is not None:
-            
-            await member.guild.system_channel.send(f'Welcome {member.mention} to {member.guild.name}!')
-    async def on_member_join(self, context, member):
-        for guild in self.fred.guilds:
-            for channel in guild.text_channels:
-                if channel.name == 'test3':
-                    await context.send(f'Member {member.mention} has joined!')
-
     @tasks.loop(minutes=30)
     async def update_tables(self):
         for branch in self.fred.ymca.branches.values():
             self.fred.ymca.database.update_rss(branch)
+            self.fred.ymca.database.update_google_forms(branch)
             for pool_group in branch.pool_groups:
                 for pool in pool_group.pools:
                     if pool.is_open:
                         for channel in branch.guild.text_channels:
                             if channel.name == 'test3':
-                                last_chem = self.fred.ymca.database.select_last_chems([pool.name], branch)
+                                last_chem = self.fred.ymca.database.select_last_chem(branch, pool)
                                 now = datetime.datetime.now()
                                 positions: List[Position] = [branch.w2w_client.specialist, branch.w2w_client.supervisor, pool_group.w2w_lifeguard_position]
                                 shifts = branch.w2w_client.get_shifts_now(positions)
                                 w2w_employees = branch.w2w_client.unique_employees(shifts)        
                                 discord_users = self.fred.ymca.database.select_discord_users(branch, w2w_employees)
-                                if (last_chem[0][7] < str(now - datetime.timedelta(hours=2, minutes=30))
+                                if (last_chem.sample_time < now - datetime.timedelta(hours=2, minutes=30)
                                     and now > pool.opening_time + datetime.timedelta(hours=2, minutes=30)
                                     and now < pool.closing_time - datetime.timedelta(minutes=30)
                                 ):
                                     await channel.send(f"Notification: {' '.join([user.mention for user in discord_users])} Please submit a chemical check for the {pool.name}.")
                                 for checklist in pool.checklists:
-                                    last_opening = self.fred.ymca.database.select_last_opening(checklist, branch)
-                                    if (last_opening[7] < str(now - datetime.timedelta(hours=16))
+                                    last_opening = self.fred.ymca.database.select_last_opening(branch, checklist)
+                                    if (last_opening.opening_time < now - datetime.timedelta(hours=16)
                                         and now > pool.opening_time + datetime.timedelta(hours=1, minutes=30)
                                         and now < pool.closing_time - datetime.timedelta(minutes=30)
                                     ):

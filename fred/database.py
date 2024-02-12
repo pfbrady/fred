@@ -53,8 +53,8 @@ class YMCADatabase(object):
         self.init_branches(branch)
         self.init_discord_users(branch)
         self.init_w2w_users(branch)
-        self.load_chems(branch)
-        self.load_vats(branch)
+        # self.load_chems(branch)
+        # self.load_vats(branch)
 
     def init_branches(self, branch: Branch):
         cursor = self.connection.cursor()
@@ -150,7 +150,8 @@ class YMCADatabase(object):
     def insert_w2w_employee(self, branch: Branch, employee: whentowork.Employee):
         cursor = self.connection.cursor()
         discord_id = dbh.match_discord_id(branch, employee.first_name, employee.last_name)
-        email = employee.emails[0] if employee.emails else 'NULL'
+        discord_id = discord_id if discord_id else 'NULL'
+        email = employee.emails[0] if employee.emails else ''
         try:
             cursor.executescript(f"""
                 BEGIN;
@@ -181,12 +182,13 @@ class YMCADatabase(object):
 
     def insert_chem(self, branch: Branch, chem: ChemCheck) -> bool:
         cursor = self.connection.cursor()
+        chem_di = chem.discord_id if chem.discord_id else 'NULL'
         try:
             cursor.executescript(f"""
                 BEGIN;
                 INSERT INTO chem_checks
                 VALUES(
-                    {chem.chem_uuid}, {chem.discord_id}, '{chem.name}', '{branch.branch_id}',
+                    {chem.chem_uuid}, {chem_di}, '{chem.name}', '{branch.branch_id}',
                     '{chem.pool_id}', '{chem.sample_location}', '{chem.sample_time}',
                     '{chem.submit_time}', {chem.chlorine}, {chem.ph}, {chem.water_temp},
                     {chem.num_of_swimmers}
@@ -204,35 +206,38 @@ class YMCADatabase(object):
 
     def insert_vat(self, branch: Branch, vat: VAT) -> bool:
         cursor = self.connection.cursor()
+        vat_gdi = vat.guard_discord_id if vat.guard_discord_id else 'NULL'
+        vat_sdi = vat.sup_discord_id if vat.sup_discord_id else 'NULL'
         try:
             cursor.executescript(f"""
                 BEGIN;
                 INSERT INTO vats
                 VALUES(
-                    {vat.vat_uuid}, {vat.guard_discord_id}, '{vat.guard_name}', {vat.sup_discord_id},
-                    '{vat.sup_name}', '{branch.branch_id}', '{vat.pool_id}', '{vat.vat_time}', '{vat.submit_time}',
-                    {vat.num_of_swimmers}, {vat.num_of_guards}, '{vat.stimuli}', {vat.depth}, {vat.response_time}
+                    {vat.vat_uuid}, {vat_gdi}, '{vat.guard_name}', {vat_sdi}, '{vat.sup_name}', '{branch.branch_id}',
+                    '{vat.pool_id}', '{vat.vat_time}', '{vat.submit_time}', {vat.num_of_swimmers}, {vat.num_of_guards},
+                    '{vat.stimuli}', {vat.depth}, {vat.response_time}
                 );
                 COMMIT;
             """)
         except sqlite3.IntegrityError:
-            logging.log(logging.WARN, f"VAT (ID: {vat.vat_uuid}) already in table 'vats'")
+            log.log(logging.WARN, f"VAT (ID: {vat.vat_uuid}) already in table 'vats'")
         except Exception as e:
             log.log(logging.ERROR, f"Issue inserting VAT (ID: {vat.vat_uuid}). Error: {e}")
         else:
-            logging.log(logging.INFO, f"VAT (ID: {vat.vat_uuid}) inserted into table 'vats'")
+            log.log(logging.INFO, f"VAT (ID: {vat.vat_uuid}) inserted into table 'vats'")
             return True
         return False
     
     
     def insert_opening_checklist(self, branch: Branch, o: OpeningChecklist) -> bool:
         cursor = self.connection.cursor()
+        oc_di = o.discord_id if o.discord_id else 'NULL'
         try:
             cursor.executescript(f"""
                 BEGIN;
                 INSERT INTO opening_checklists
                 VALUES(
-                    {o.oc_uuid}, {o.discord_id}, '{o.name}', '{branch.branch_id}', '{o.checklist_group}',
+                    {o.oc_uuid}, {oc_di}, '{o.name}', '{branch.branch_id}', '{o.checklist_group}',
                     '{o.opening_time}', '{o.submit_time}', '{o.regulatory_info}', '{o.aed_info}',
                     '{o.adult_pads_expiration_date}', '{o.pediatric_pads_expiration_date}',
                     '{o.aspirin_expiration_date}', '{o.sup_oxygen_info}', '{o.sup_oxygen_psi}', '{o.first_aid_info}',
@@ -242,33 +247,34 @@ class YMCADatabase(object):
                 COMMIT;
             """)
         except sqlite3.IntegrityError:
-            logging.log(logging.WARN, f"Opening Checklist (ID: {o.oc_uuid}) already in table 'opening_checklists'")
+            log.log(logging.WARN, f"Opening Checklist (ID: {o.oc_uuid}) already in table 'opening_checklists'")
         except Exception as e:
             log.log(logging.ERROR, f"Issue inserting Opening Checklist (ID: {o.oc_uuid}). Error: {e}")
         else:
-            logging.log(logging.INFO, f"Opening Checklist (ID: {o.oc_uuid}) inserted into table 'opening_checklists'")
+            log.log(logging.INFO, f"Opening Checklist (ID: {o.oc_uuid}) inserted into table 'opening_checklists'")
             return True
         return False
     
     def insert_closing_checklist(self, branch: Branch, c: ClosingChecklist) -> bool:
         cursor = self.connection.cursor()
+        oc_di = c.discord_id if c.discord_id else 'NULL'
         try:
             cursor.executescript(f"""
                 BEGIN;
                 INSERT INTO closing_checklists
                 VALUES(
-                    {c.oc_uuid}, {c.discord_id}, '{c.name}', '{branch.branch_id}', '{c.checklist_group}',
-                    '{c.closing_time}', '{c.submit_time}', '{c.regulatory_info}', {c.chlorine}, {c.ph}, 
+                    {c.oc_uuid}, {oc_di}, '{c.name}', '{branch.branch_id}', '{c.checklist_group}',
+                    '{c.closing_time}', '{c.submit_time}', '{c.regulatory_info}', {c.chlorine}, {c.ph},
                     {c.water_temp}, '{c.lights_function}', '{c.vacuum_function}'
                 );
                 COMMIT;
             """)
         except sqlite3.IntegrityError:
-            logging.log(logging.WARN, f"Closing Checklist (ID: {c.oc_uuid}) already in table 'closing_checklists'")
+            log.log(logging.WARN, f"Closing Checklist (ID: {c.oc_uuid}) already in table 'closing_checklists'")
         except Exception as e:
             log.log(logging.ERROR, f"Issue inserting Closing Checklist (ID: {c.oc_uuid}). Error: {e}")
         else:
-            logging.log(logging.INFO, f"Closing Checklist (ID: {c.oc_uuid}) inserted into table 'closing_checklists'")
+            log.log(logging.INFO, f"Closing Checklist (ID: {c.oc_uuid}) inserted into table 'closing_checklists'")
             return True
         return False
     
@@ -347,16 +353,21 @@ class YMCADatabase(object):
             user = cursor.fetchone()
             if user:
                 discord_user = branch.guild.get_member(user[0])
-                if discord_user:
-                    return discord_user
-                else:
-                    return None
+                return discord_user if discord_user else None
             else:
                 self.insert_w2w_employee(branch, employee)
                 return self.select_discord_user(branch, employee)
             
+    def select_discord_users2(self, branch: Branch, employees: List[whentowork.Employee]) -> List[discord.Member]:
+        return [self.select_discord_user(branch, employee) for employee in employees if self.select_discord_user(branch, employee)]
+            
     def select_discord_users(self, branch: Branch, employees: List[whentowork.Employee]) -> List[discord.Member]:
-        return [self.select_discord_user(branch, employee) for employee in employees]
+        selected_users = []
+        for employee in employees:
+            discord_user = self.select_discord_user(branch, employee)
+            if discord_user:
+                selected_users.append(discord_user)
+        return selected_users
 
     def select_last_chem(self, branch: Branch, pool: Pool) -> ChemCheck:
         cursor = self.connection.cursor()

@@ -24,3 +24,4 @@ class YMCA(object):
                     branch.test_guild = guild
             branch.init_w2w_positions()
             branch.update_pool_extreme_times()
+            branch.update_pool_open()

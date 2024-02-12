@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Union, List
+from typing import TYPE_CHECKING, Union, List, ItemsView
 import datetime
 import logging
 from difflib import SequenceMatcher
@@ -21,7 +21,7 @@ def match_discord_id(branch: Branch, name: str, last_name: str = None) -> Union[
         last_name_match = SequenceMatcher(None, discord_display_name_split[-1], last_name.lower()).ratio()
         first_name_match = SequenceMatcher(None, discord_display_name_split[0], name.lower()).ratio()
         if last_name_match > 0.85 and first_name_match > potential_match[1]:
-            potential_match = (discord_user.id, first_name_match)
+            potential_match = discord_user.id, first_name_match
     return potential_match[0] if potential_match[0] else None
 
 def match_pool_id(branch: Branch, pool_alias: str) -> str:
@@ -31,12 +31,12 @@ def match_pool_id(branch: Branch, pool_alias: str) -> str:
                 return pool.pool_id
     return ''
 
-def match_pool_id_from_keys(branch: Branch, keys: List[str]):
-    for key in keys:
+def match_pool_id_from_dict(branch: Branch, form: dict):
+    for key, item in form.items():
         if key == branch.name:
-            return match_pool_id(branch, key)
+            return match_pool_id(branch, item)
         if key in branch.aliases:
-            return match_pool_id(branch, key)
+            return match_pool_id(branch, item)
     return ''
 
 def handle_quotes(*names: str) -> str:
@@ -79,3 +79,18 @@ def handle_fs_csv_datetime(time_str: str) -> Union[datetime.datetime, None]:
         logging.log(logging.WARN, f"Formstack datetime ({time_str}) not formatted correcty: {e}")
 
     return dt_formatted
+
+def handle_num_of_guests(guests_string: str):
+    guests_list = guests_string.split(' ')
+    try:
+        return int(guests_list[-2])
+    except ValueError as e:
+        logging.warning(f"Error: Number of Guests field improperly filled out on Formstack {e}")
+        return 10
+        
+def handle_num_of_guards(guards_string: str):
+    if guards_string == 'Yes':
+        return 1
+    else:
+        guards_list = guards_string.split(' ')
+        return int(guards_list[3])

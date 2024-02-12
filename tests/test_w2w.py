@@ -16,12 +16,12 @@ class W2WTestCase(TestCase):
         self.assertEqual(35181500, self.ymca_w2w_client_western.company_id)
 
     def test_get_shifts_later(self):
-        positions = [self.ymca_w2w_client_western.get_position_by_id(self.ymca_w2w_client_western.swim_instructor_id)]
+        positions = [self.ymca_w2w_client_western.get_position_by_id(self.ymca_w2w_client_western.swim_instructor)]
         si_shifts_later = self.ymca_w2w_client_western.get_shifts_later(positions)
         self.assertGreater(len(si_shifts_later), 0)
 
     def test_get_shifts_today(self):
-        positions = [self.ymca_w2w_client_western.get_position_by_id(self.ymca_w2w_client_western.swim_instructor_id)]
+        positions = [self.ymca_w2w_client_western.get_position_by_id(self.ymca_w2w_client_western.swim_instructor)]
         si_shifts_later = self.ymca_w2w_client_western.get_shifts_today(positions)
         self.assertGreater(len(si_shifts_later), 0)
 
@@ -29,7 +29,7 @@ class W2WTestCase(TestCase):
         today_shifts = self.ymca_w2w_client_western.get_shifts_by_date(self.sample_start_date, self.sample_end_date)
         start_dt = datetime(2024, 1, 14, 6, 30)
         end_dt = datetime(2024, 1, 14, 16, 30)
-        positions = [self.ymca_w2w_client_western.get_position_by_id(self.ymca_w2w_client_western.supervisor_id)]
+        positions = [self.ymca_w2w_client_western.get_position_by_id(self.ymca_w2w_client_western.supervisor)]
         filtered_today_shifts = self.ymca_w2w_client_western.filter_shifts(today_shifts, start_dt, end_dt, positions)
         self.assertEqual(len(filtered_today_shifts), 1)
           

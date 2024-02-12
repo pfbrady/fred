@@ -28,6 +28,9 @@ class Formstack_Commands(discord.app_commands.Group):
             except discord.app_commands.AppCommandError:
                 logging.log(logging.INFO, f"Extension {extension} already loaded.")
                 await interaction.response.send_message("Error Loading Commands", ephemeral=True)
+            except discord.app_commands.CommandInvokeError:
+                logging.log(logging.INFO, f"Extension {extension} not found.")
+                await interaction.response.send_message("Error Loading Commands", ephemeral=True)
         await self.fred.tree.sync()
         await interaction.response.send_message("All commands loaded", ephemeral=True)
 

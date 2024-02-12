@@ -131,6 +131,8 @@ class OpeningChecklist(object):
     
     @classmethod
     def from_database(cls, db_tup: Tuple[str]):
+        if not all(db_tup):
+            return cls(0)
         oc_uuid = db_tup[0]
         discord_id = int(db_tup[1]) if db_tup[1] else None
         name = db_tup[2]
@@ -196,6 +198,8 @@ class ClosingChecklist(object):
     
     @classmethod
     def from_database(cls, db_tup: Tuple[str]):
+        if not all(db_tup):
+            return cls(0)
         oc_uuid = db_tup[0]
         discord_id = int(db_tup[1]) if db_tup[1] else None
         name = db_tup[2]

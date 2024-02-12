@@ -49,7 +49,12 @@ class Branch(object):
         return None
 
     def get_w2w_employee_by_id(self, w2w_employee_id: int):
-        return self.w2w_client.get_employee_by_id(w2w_employee_id)
+        employee = self.w2w_client.get_employee_by_id(w2w_employee_id)
+        if employee:
+            return self.w2w_client.get_employee_by_id(w2w_employee_id)
+        else:
+            # employee = self.ymca.database.select_w2w_employee(w2w_employee_id)
+            return None
 
     def _update_w2w_client(self, w2w_custom_hostname: str, w2w_token: str, w2w_position_ids: YMCAW2WClientPayload):
         try:
@@ -61,6 +66,11 @@ class Branch(object):
         for pool_group in self.pool_groups:
             pool_group.w2w_lifeguard_position = self.w2w_client.get_position_by_id(pool_group.w2w_lifeguard_position_id)
             pool_group.w2w_supervisor_position = self.w2w_client.get_position_by_id(pool_group.w2w_supervisor_position_id)
+
+    def update_pool_open(self):
+        for pool_group in self.pool_groups:
+            for pool in pool_group.pools:
+                pool.update_is_open()
 
     def update_pool_extreme_times(self):
         for pool_group in self.pool_groups:

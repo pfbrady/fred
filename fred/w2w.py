@@ -56,8 +56,13 @@ class YMCAW2WClient(Client):
     def get_shifts_extreme(self, date_start: date, date_end: date, positions: List[Position], opener_flag: bool = True) -> List[Shift]:
         range_shifts = self.get_shifts_by_date(date_start, date_end)
         rs_filtered_to_position = self.filter_shifts(range_shifts, positions=positions)
-        rs_filtered_dict = self._sort_shifts_by_date_and_position(rs_filtered_to_position)
+        rs_filtered_dict = self._sort_shifts_by_date_and_position_id(rs_filtered_to_position)
         return self._get_extreme_shifts_from_sorted(rs_filtered_dict, opener_flag)
+    
+    def shifts_sorted_by_employee_id(self, date_start: date, date_end: date, positions: List[Position]) -> Dict[int, List[Shift]]:
+        range_shifts = self.get_shifts_by_date(date_start, date_end)
+        rs_filtered_to_position = self.filter_shifts(range_shifts, positions=positions)
+        return self._sort_shifts_by_employee_id(rs_filtered_to_position)
 
         
 
@@ -70,28 +75,38 @@ class YMCAW2WClient(Client):
             shifts = list(filter(lambda shift: (shift.start_datetime < dt_end and shift.end_datetime > dt_start), shifts))
         return shifts
     
-    def _get_extreme_shifts_from_sorted(self, shifts_dict: Dict[datetime.date, Dict[Position, List[Shift]]], opener_flag: bool = True):
+    def _get_extreme_shifts_from_sorted(self, shifts_dict: Dict[datetime.date, Dict[int, List[Shift]]], opener_flag: bool = True):
         final_shifts: List[Shift] = []
         for shift_dict_by_pos in shifts_dict.values():
             for shifts in shift_dict_by_pos.values():
-                final_shifts.append(self._get_shifts_extreme(shifts, opener_flag))
+                final_shifts.extend(self._get_shifts_extreme(shifts, opener_flag))
         return final_shifts
 
     
     @staticmethod
-    def _sort_shifts_by_date_and_position(shifts: List[Shift]) -> Dict[datetime.date, List[Shift]]:
+    def _sort_shifts_by_date_and_position_id(shifts: List[Shift]) ->  Dict[datetime.date, Dict[int, List[Shift]]]:
         shifts_dict: Dict[datetime.date, Dict[Position, List[Shift]]] = {}
         for shift in shifts:
             shift_start_date = shift.start_datetime.date()
-            shift_position = shift.position
             if shift_start_date in shifts_dict:
-                if shift_position in shifts_dict[shift_start_date]:
-                    shifts_dict[shift_start_date][shift_position].append(shift)
+                if shift.position_id in shifts_dict[shift_start_date]:
+                    shifts_dict[shift_start_date][shift.position_id].append(shift)
                 else:
-                    shifts_dict[shift_start_date][shift_position] = [shift]
+                    shifts_dict[shift_start_date][shift.position_id] = [shift]
             else:
-                shifts_dict[shift_start_date] = {shift_position: [shift]}
+                shifts_dict[shift_start_date] = {shift.position_id: [shift]}
         return shifts_dict
+    
+    @staticmethod
+    def _sort_shifts_by_employee_id(shifts: List[Shift]) -> Dict[int, List[Shift]]:
+        shifts_dict: Dict[Employee, List[Shift]] = {}
+        for shift in shifts:
+            if shift.w2w_employee_id in shifts_dict:
+                shifts_dict[shift.w2w_employee_id].append(shift)
+            else:
+                shifts_dict[shift.w2w_employee_id] = [shift]
+        return shifts_dict
+
 
     @staticmethod
     def _get_shifts_extreme(shifts: List[Shift], opener_flag: bool = True):
@@ -118,7 +133,7 @@ class YMCAW2WClient(Client):
                 elif shift.end_datetime == extreme_time:
                     extreme_shifts.append(shift)
 
-        return extreme_shifts    
+        return extreme_shifts
 
     @staticmethod
     def unique_employees(shifts: List[Shift]):

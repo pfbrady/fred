@@ -4,7 +4,6 @@ import datetime
 
 class ChemsTestCase(TestCase):
     def setUp(self):
-        fred.fred()
         self.sample_chem = fred.ChemCheck(123, 3.0, 7.4)
         ymca = fred.YMCA('YMCA of Delaware')
         self.branch_western = ymca.branches['007']

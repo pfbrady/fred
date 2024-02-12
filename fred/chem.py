@@ -45,7 +45,7 @@ class ChemCheck(object):
         chem_uuid = int(row['Unique ID'])
         discord_id = dbh.match_discord_id(branch, row['Your Name (First)'], row['Your Name (Last)'])
         name = dbh.handle_quotes(row['Your Name (First)'], row['Your Name (Last)'])
-        pool_id = dbh.match_pool_id_from_keys(branch, row.keys())              
+        pool_id = dbh.match_pool_id_from_dict(branch, row)              
         sample_location = row.get('Location of Water Sample, Western', 'NULL')
         sample_time = dbh.handle_fs_rss_datetime(row['Date/Time'])
         submit_time = dbh.handle_fs_csv_datetime(row['Time'])
@@ -62,7 +62,7 @@ class ChemCheck(object):
         chem_uuid = int(entry['Unique ID'])
         discord_id = dbh.match_discord_id(branch, entry['Your Name'])
         name = dbh.handle_quotes(entry['Your Name'])
-        pool_id = dbh.match_pool_id_from_keys(branch, entry.keys())
+        pool_id = dbh.match_pool_id_from_dict(branch, entry)
         sample_location_key = match_sample_location_key(entry.keys())
         sample_location = entry.get(sample_location_key, '')
         sample_time = dbh.handle_fs_rss_datetime(entry['Date/Time'])
@@ -77,6 +77,8 @@ class ChemCheck(object):
     
     @classmethod
     def from_database(cls, db_tup: Tuple[str]):
+        if not all(db_tup):
+            return cls(0, 0.0, 0.0)
         chem_uuid = int(db_tup[0])
         discord_id = int(db_tup[1]) if db_tup[1] else None
         name = db_tup[2]

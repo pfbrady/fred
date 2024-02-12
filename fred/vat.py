@@ -9,21 +9,6 @@ import datetime
 if TYPE_CHECKING:
     from .branch import Branch
 
-
-def handle_num_of_guests(guests_string: str):
-    guests_list = guests_string.split(' ')
-    try:
-        return int(guests_list[-2])
-    except ValueError as e:
-        logging.warning(f"Error: Number of Guests field improperly filled out on Formstack {e}")
-        return 10
-        
-def handle_num_of_guards(guards_string: str):
-    if guards_string == 'Yes':
-        return 1
-    else:
-        guards_list = guards_string.split(' ')
-        return int(guards_list[3])
     
 def handle_depth(depth_string: str) -> float:
     if depth_string == 'Less than 1 Foot of Water':
@@ -92,8 +77,8 @@ class VAT(object):
             vat_time = dbh.handle_fs_rss_datetime(
                 f"{row['Date of Vigilance Test Conducted']} {row['Time of Vigilance Test Conducted ']}")
         submit_time = dbh.handle_fs_csv_datetime(row['Time'])
-        num_of_swimmers = handle_num_of_guests(row['How many guests do you believe were in the pool?'])
-        num_of_guards = handle_num_of_guards(row['Were they the only lifeguard watching the pool?'])
+        num_of_swimmers = dbh.handle_num_of_guests(row['How many guests do you believe were in the pool?'])
+        num_of_guards = dbh.handle_num_of_guards(row['Were they the only lifeguard watching the pool?'])
         stimuli = row['What type of stimuli was used?']
         depth = handle_depth(row['What was the water depth where the stimuli was placed?'])
         response_time = handle_response_time(row['Did the lifeguard being vigilance tested respond to the stimuli?'])
@@ -111,8 +96,8 @@ class VAT(object):
         vat_time = dbh.handle_fs_rss_datetime(
             f"{entry['Date of Vigilance Test Conducted']} {entry['Time of Vigilance Test Conducted ']}")
         submit_time = entry['Time']
-        num_of_swimmers = handle_num_of_guests(entry['How many guests do you believe were in the pool?'])
-        num_of_guards = handle_num_of_guards(entry['Were they the only lifeguard watching the pool?'])
+        num_of_swimmers = dbh.handle_num_of_guests(entry['How many guests do you believe were in the pool?'])
+        num_of_guards = dbh.handle_num_of_guards(entry['Were they the only lifeguard watching the pool?'])
         stimuli = entry['What type of stimuli was used?']
         depth = handle_depth(entry['What was the water depth where the stimuli was placed?'])
         response_time = handle_response_time(entry['Did the lifeguard being vigilance tested respond to the stimuli?'])
@@ -121,6 +106,8 @@ class VAT(object):
     
     @classmethod
     def from_database(cls, db_tup: Tuple[str]):
+        if not all(db_tup):
+            return cls(0)
         vat_uuid = int(db_tup[0])
         guard_discord_id = int(db_tup[1]) if db_tup[1] else None
         guard_name = db_tup[2]
