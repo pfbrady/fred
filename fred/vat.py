@@ -106,7 +106,7 @@ class VAT(object):
     
     @classmethod
     def from_database(cls, db_tup: Tuple[str]):
-        if not all(db_tup):
+        if not any(db_tup):
             return cls(0)
         vat_uuid = int(db_tup[0])
         guard_discord_id = int(db_tup[1]) if db_tup[1] else None
@@ -124,3 +124,6 @@ class VAT(object):
         response_time = float(db_tup[13])
         return cls(vat_uuid, guard_discord_id, guard_name, sup_discord_id, sup_name, branch_id, pool_id, 
                    vat_time, submit_time, num_of_swimmers, num_of_guards, stimuli, depth, response_time)
+    
+    def __bool__(self):
+        return False if self.vat_uuid == 0 or None else True

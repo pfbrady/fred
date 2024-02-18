@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
-from typing import TYPE_CHECKING, Dict, Union, Tuple
+from types import UnionType
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
 import fred.database_helper as dbh
 import datetime
 
@@ -65,17 +66,17 @@ def handle_vacuum_closing(entry: dict) -> bool:
 @dataclass
 class OpeningChecklist(object):
     oc_uuid: int
-    discord_id: Union[int, None] = None
+    discord_id: Optional[int] = None
     name: str = ''
     branch_id: str = ''
     checklist_group: str = ''
-    opening_time: Union[datetime.datetime, None] = None
-    submit_time: Union[datetime.datetime, None] = None
+    opening_time: Optional[datetime.datetime] = None
+    submit_time: Optional[datetime.datetime] = None
     regulatory_info: str = ''
     aed_info: str = ''
-    adult_pads_expiration_date: Union[datetime.date, None] = None
-    pediatric_pads_expiration_date: Union[datetime.date, None] = None
-    aspirin_expiration_date: Union[datetime.date, None] = None
+    adult_pads_expiration_date: Optional[datetime.date] = None
+    pediatric_pads_expiration_date: Optional[datetime.date] = None
+    aspirin_expiration_date: Optional[datetime.date] = None
     sup_oxygen_info: str = ''
     sup_oxygen_psi: int = 0
     first_aid_info: str = ''
@@ -131,7 +132,7 @@ class OpeningChecklist(object):
     
     @classmethod
     def from_database(cls, db_tup: Tuple[str]):
-        if not all(db_tup):
+        if not any(db_tup):
             return cls(0)
         oc_uuid = db_tup[0]
         discord_id = int(db_tup[1]) if db_tup[1] else None
@@ -160,16 +161,19 @@ class OpeningChecklist(object):
                    regulatory_info, aed_info, adult_pads_expiration_date, pediatric_pads_expiration_date,
                    aspirin_expiration_date, sup_oxygen_info, sup_oxygen_psi, first_aid_info, chlorine, ph, water_temp,
                    lights_function, handicap_chair_function, spare_battery_present, vacuum_present)
+    
+    def __bool__(self):
+        return False if self.oc_uuid == 0 or None else True
 
 @dataclass
 class ClosingChecklist(object):
     oc_uuid: int
-    discord_id: Union[int, None] = None
+    discord_id: Optional[int] = None
     name: str = ''
     branch_id: str = ''
     checklist_group: str = ''
-    closing_time: Union[datetime.datetime, None] = None
-    submit_time: Union[datetime.datetime, None] = None
+    closing_time: Optional[datetime.datetime] = None
+    submit_time: Optional[datetime.datetime] = None
     regulatory_info: str = ''
     chlorine: float = 0.0
     ph: float = 0.0
@@ -198,7 +202,7 @@ class ClosingChecklist(object):
     
     @classmethod
     def from_database(cls, db_tup: Tuple[str]):
-        if not all(db_tup):
+        if not any(db_tup):
             return cls(0)
         oc_uuid = db_tup[0]
         discord_id = int(db_tup[1]) if db_tup[1] else None
@@ -216,3 +220,7 @@ class ClosingChecklist(object):
         vacuum_function = bool(db_tup[12])
         return cls(oc_uuid, discord_id, name, branch_id, checklist_group, closing_time, submit_time, 
                    regulatory_info, chlorine, ph, water_temp, lights_function, vacuum_function)
+    
+    def __bool__(self):
+        return False if self.oc_uuid == 0 or None else True
+        

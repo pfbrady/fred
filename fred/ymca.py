@@ -1,8 +1,13 @@
-from typing import Dict, List
+from __future__ import annotations
+
+from typing import Dict, List, TYPE_CHECKING
 from discord import Guild
 from .branch import Branch
 from .database import YMCADatabase
 from settings import SETTINGS_DICT
+
+if TYPE_CHECKING:
+    from fred import Fred
 
 class YMCA(object):
     def __init__(self, name: str):
@@ -23,5 +28,4 @@ class YMCA(object):
                 elif branch.test_guild_id == guild.id:
                     branch.test_guild = guild
             branch.init_w2w_positions()
-            branch.update_pool_extreme_times()
-            branch.update_pool_open()
+            branch.update_pools()

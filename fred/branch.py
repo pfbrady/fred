@@ -4,14 +4,14 @@ from datetime import date, datetime
 from .w2w import YMCAW2WClient
 from .pool_group import PoolGroup
 import logging
-from whentowork import Shift, Position
-from typing import TYPE_CHECKING, List, Dict, Tuple, Union, Any
+from whentowork import Shift, Position, Employee
+from typing import TYPE_CHECKING, List, Dict, Optional, Union
 
 if TYPE_CHECKING:
     from .ymca import YMCA
     from .pool import Pool
     from .types.w2w import YMCAW2WClientPayload
-    from discord import Guild
+    from discord import Guild, Member
 
 log = logging.getLogger(__name__)
 
@@ -41,20 +41,21 @@ class Branch(object):
         self.last_closing_id: int = 0
         self.last_in_service_id: int = 0
 
-    def get_pool_by_pool_id(self, pool_id: str) -> Union[Pool, None]:
+    def get_pool_by_pool_id(self, pool_id: str) -> Optional[Pool]:
         for pool_group in self.pool_groups:
             for pool in pool_group.pools:
                 if pool_id == pool.pool_id:
                     return pool
         return None
+    
+    def get_discord_member_by_id(self, discord_user_id: int) -> Optional[Member]:
+        user = self.guild.get_member(discord_user_id)
+        return user if user else None
 
-    def get_w2w_employee_by_id(self, w2w_employee_id: int):
+    def get_w2w_employee_by_id(self, w2w_employee_id: int) -> Optional[Employee]:
         employee = self.w2w_client.get_employee_by_id(w2w_employee_id)
-        if employee:
-            return self.w2w_client.get_employee_by_id(w2w_employee_id)
-        else:
-            # employee = self.ymca.database.select_w2w_employee(w2w_employee_id)
-            return None
+        return employee if employee else None
+        # employee = self.ymca.database.select_w2w_employee(w2w_employee_id)
 
     def _update_w2w_client(self, w2w_custom_hostname: str, w2w_token: str, w2w_position_ids: YMCAW2WClientPayload):
         try:
@@ -67,12 +68,16 @@ class Branch(object):
             pool_group.w2w_lifeguard_position = self.w2w_client.get_position_by_id(pool_group.w2w_lifeguard_position_id)
             pool_group.w2w_supervisor_position = self.w2w_client.get_position_by_id(pool_group.w2w_supervisor_position_id)
 
-    def update_pool_open(self):
+    def update_pools(self):
+        self.update_pools_open()
+        self.update_pools_extreme_times()
+
+    def update_pools_open(self):
         for pool_group in self.pool_groups:
             for pool in pool_group.pools:
                 pool.update_is_open()
 
-    def update_pool_extreme_times(self):
+    def update_pools_extreme_times(self):
         for pool_group in self.pool_groups:
             shifts: List[Shift] = self.w2w_client.get_shifts_today([pool_group.w2w_lifeguard_position])
 

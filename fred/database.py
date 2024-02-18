@@ -410,14 +410,44 @@ class YMCADatabase(object):
         else:
             return VAT.from_database(cursor.fetchone())
         
-    def select_vats_month(self, branch: Branch, dt_now: datetime.datetime) -> List[VAT]:
+    def select_vats_to_date(self, branch: Branch, dt_vats_after: datetime.datetime) -> List[VAT]:
         cursor = self.connection.cursor()
         try:
             cursor.execute(f"""
                 SELECT * FROM vats
-                WHERE vat_time > '{datetime.datetime(dt_now.year, dt_now.month, 1)}' AND branch_id = '{branch.branch_id}';
+                WHERE vat_time > '{dt_vats_after}' AND branch_id = '{branch.branch_id}';
             """)
         except Exception as e:
             print(e)
         else:
             return [VAT.from_database(vat) for vat in cursor.fetchall()]
+        
+    def select_vats_dtd(self, branch: Branch, dt_now: datetime.datetime) -> List[VAT]:
+        return self.select_vats_to_date(branch, datetime.datetime(dt_now.year, dt_now.month, dt_now.day))
+        
+    def select_vats_mtd(self, branch: Branch, dt_now: datetime.datetime) -> List[VAT]:
+        return self.select_vats_to_date(branch, datetime.datetime(dt_now.year, dt_now.month, 1))
+    
+    def select_vats_ytd(self, branch: Branch, dt_now: datetime.datetime) -> List[VAT]:
+        return self.select_vats_to_date(branch, datetime.datetime(dt_now.year, 1, 1))
+        
+    def select_chems_to_date(self, branch: Branch, dt_chems_after: datetime.datetime) -> List[ChemCheck]:
+        cursor = self.connection.cursor()
+        try:
+            cursor.execute(f"""
+                SELECT * FROM chem_checks
+                WHERE sample_time > '{dt_chems_after}' AND branch_id = '{branch.branch_id}';
+            """)
+        except Exception as e:
+            print(e)
+        else:
+            return [ChemCheck.from_database(chem) for chem in cursor.fetchall()]
+        
+    def select_chems_dtd(self, branch: Branch, dt_now: datetime.datetime) -> List[ChemCheck]:
+        return self.select_chems_to_date(branch, datetime.datetime(dt_now.year, dt_now.month, dt_now.day))
+        
+    def select_chems_mtd(self, branch: Branch, dt_now: datetime.datetime) -> List[ChemCheck]:
+        return self.select_chems_to_date(branch, datetime.datetime(dt_now.year, dt_now.month, 1))
+    
+    def select_chems_ytd(self, branch: Branch, dt_now: datetime.datetime) -> List[ChemCheck]:
+        return self.select_chems_to_date(branch, datetime.datetime(dt_now.year, 1, 1))

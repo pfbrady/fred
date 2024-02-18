@@ -18,7 +18,7 @@ class Evaluation(Enum):
     NA = 3
 
 @dataclass
-class ScanningAudit(object):
+class ScanningAudit():
     sa_uuid: int
     guard_discord_id: Optional[int] = None
     guard_name: str = ''

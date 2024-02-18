@@ -77,7 +77,7 @@ class ChemCheck(object):
     
     @classmethod
     def from_database(cls, db_tup: Tuple[str]):
-        if not all(db_tup):
+        if not any(db_tup):
             return cls(0, 0.0, 0.0)
         chem_uuid = int(db_tup[0])
         discord_id = int(db_tup[1]) if db_tup[1] else None
@@ -94,3 +94,6 @@ class ChemCheck(object):
         return cls(chem_uuid, chlorine, ph, discord_id, name, branch_id,
                    pool_id, sample_location, sample_time, submit_time,
                    water_temp, num_of_swimmers)
+    
+    def __bool__(self):
+        return False if self.chem_uuid == 0 or None else True

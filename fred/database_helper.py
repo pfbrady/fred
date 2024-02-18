@@ -16,12 +16,13 @@ def match_discord_id(branch: Branch, name: str, last_name: str = None) -> Union[
         else:
             name, last_name = split_name
     potential_match = (0, 0)
-    for discord_user in branch.guild.members:
-        discord_display_name_split = discord_user.display_name.lower().split(' ', 1)
-        last_name_match = SequenceMatcher(None, discord_display_name_split[-1], last_name.lower()).ratio()
-        first_name_match = SequenceMatcher(None, discord_display_name_split[0], name.lower()).ratio()
-        if last_name_match > 0.85 and first_name_match > potential_match[1]:
-            potential_match = discord_user.id, first_name_match
+    if branch.guild:
+        for discord_user in branch.guild.members:
+            discord_display_name_split = discord_user.display_name.lower().split(' ', 1)
+            last_name_match = SequenceMatcher(None, discord_display_name_split[-1], last_name.lower()).ratio()
+            first_name_match = SequenceMatcher(None, discord_display_name_split[0], name.lower()).ratio()
+            if last_name_match > 0.85 and first_name_match > potential_match[1]:
+                potential_match = discord_user.id, first_name_match
     return potential_match[0] if potential_match[0] else None
 
 def match_pool_id(branch: Branch, pool_alias: str) -> str:

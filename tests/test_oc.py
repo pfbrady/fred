@@ -12,6 +12,6 @@ class ChemsTestCase(TestCase):
     def test_from_database(self):
         oc = self.database.select_last_opening(self.branch_western, 'Indoor Pool')
         print(oc.oc_uuid)
-        self.assertIsNotNone(oc)
+        self.assertTrue(bool(oc))
 
           
