@@ -65,7 +65,7 @@ cover/
 config.json
 
 # Sqlite stuff:
-*.db
+*.db*
 
 # Django stuff:
 *.log
