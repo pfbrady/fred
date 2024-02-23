@@ -1,7 +1,8 @@
 from unittest import TestCase
-from fred import YMCA
-import fred.cogs.dashboard as dash
+from fred import YMCA, SupervisorReportDashboard, ReportType, Fred
+from settings import SETTINGS_DICT
 import datetime
+import discord
 
 class DashboardCase(TestCase):
     def setUp(self):
@@ -10,6 +11,7 @@ class DashboardCase(TestCase):
 
          
     def test_vat_supervisor_dashboard(self):
-        test_dashboard = dash.VATSupervisorDashboard(self.test_branch, datetime.datetime.now())
-        print(test_dashboard.report_type)
+        test_dashboard = SupervisorReportDashboard(ReportType.MTD, datetime.datetime.now())
+        test_dashboard.run_report(self.test_branch)
+        print(test_dashboard.supervisors)
         self.assertIsNotNone(test_dashboard)
