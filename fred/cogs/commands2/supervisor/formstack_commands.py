@@ -48,8 +48,8 @@ class Formstack_Commands(discord.app_commands.Group):
 
         chems_formatted = []
         for chem in selected_chems:
-            pool = int_branch.get_pool_by_pool_id(chem.pool_id)
-            pool_name = pool.name if pool else 'Pool Name Error'
+            sel_pool = int_branch.get_pool_by_pool_id(chem.pool_id)
+            pool_name = sel_pool.name if pool else 'Pool Name Error'
             chems_formatted.append(f'Name: <@{chem.discord_id}>\n Chem Check ID: {chem.chem_uuid}\n Pool: {pool_name}\n Chlorine: {chem.chlorine}\t\tpH: {chem.ph}\n Temperature: {chem.water_temp}\n Number of Swimmers: {chem.num_of_swimmers}\n Time: {chem.sample_time}\n\n')
         await interaction.response.send_message(f"# Summary of Chem Checks:\n{''.join(chems_formatted)}", ephemeral=True)
 
