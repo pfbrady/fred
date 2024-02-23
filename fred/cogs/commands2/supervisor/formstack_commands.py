@@ -2,17 +2,14 @@ from __future__ import annotations
 
 import datetime
 import discord
-import settings
-from discord.ext import commands, tasks
-import fred.w2w as w2w
 import fred.cogs.cog_helper as ch
 
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from fred.fred import Fred
-    from fred import ChemCheck, Branch
-    from typing import List, Tuple, Dict
+    from fred import ChemCheck
+    from typing import List
 
 class Formstack_Commands(discord.app_commands.Group):
     def __init__(self, name, description, fred: Fred):
@@ -50,7 +47,7 @@ class Formstack_Commands(discord.app_commands.Group):
         for chem in selected_chems:
             sel_pool = int_branch.get_pool_by_pool_id(chem.pool_id)
             pool_name = sel_pool.name if pool else 'Pool Name Error'
-            chems_formatted.append(f'Name: <@{chem.discord_id}>\n Chem Check ID: {chem.chem_uuid}\n Pool: {pool_name}\n Chlorine: {chem.chlorine}\t\tpH: {chem.ph}\n Temperature: {chem.water_temp}\n Number of Swimmers: {chem.num_of_swimmers}\n Time: {chem.sample_time}\n\n')
+            chems_formatted.append(f'Name: <@{chem.discord_id}>\n Chem Check ID: {chem.chem_uuid}\n Pool: {pool_name}\n Chlorine: {chem.chlorine}\t\tpH: {chem.ph}\n Temperature: {chem.water_temp}\n Number of Swimmers: {chem.num_of_swimmers}\n Time: {chem.time}\n\n')
         await interaction.response.send_message(f"# Summary of Chem Checks:\n{''.join(chems_formatted)}", ephemeral=True)
 
     async def vats_pool_auto(self, interaction: discord.Interaction, current: str
@@ -69,7 +66,7 @@ class Formstack_Commands(discord.app_commands.Group):
             vat = self.fred.ymca.database.select_last_vat(int_branch)
             pool = int_branch.get_pool_by_pool_id(vat.pool_id)
             pool_name = pool.name if pool else 'Pool Name Error'
-            vat_formatted = f'Guard Name: <@{vat.guard_discord_id}>\n Supervisor Name: <@{vat.sup_discord_id}>\n VAT ID: {vat.vat_uuid}\n Pool: {pool_name}\n Number of Swimmers: {vat.num_of_swimmers}\n Number of Guards: {vat.num_of_guards}\n Stimuli: {vat.stimuli}\n Pass?: {vat.vat_pass}\n Response Time (s): {vat.response_time}\n Time: {vat.vat_time}\n\n'
+            vat_formatted = f'Guard Name: <@{vat.guard_discord_id}>\n Supervisor Name: <@{vat.sup_discord_id}>\n VAT ID: {vat.vat_uuid}\n Pool: {pool_name}\n Number of Swimmers: {vat.num_of_swimmers}\n Number of Guards: {vat.num_of_guards}\n Stimuli: {vat.stimuli}\n Pass?: {vat.vat_pass}\n Response Time (s): {vat.response_time}\n Time: {vat.time}\n\n'
             await interaction.response.send_message(f"# Most Recent VAT:\n{vat_formatted}", ephemeral=True)
         elif group == 'guard-dashboard':
             embed = discord.Embed(color=discord.Colour.from_str('#008080'), title=f"Summary of VATs (Guards, {now.strftime('%B %Y')})", description=ch.vat_guard_dashboard(int_branch, now))

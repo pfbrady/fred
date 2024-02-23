@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-import logging
-from types import UnionType
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
 import fred.database_helper as dbh
 import datetime
 
@@ -70,7 +68,7 @@ class OpeningChecklist(object):
     name: str = ''
     branch_id: str = ''
     checklist_group: str = ''
-    opening_time: Optional[datetime.datetime] = None
+    time: Optional[datetime.datetime] = None
     submit_time: Optional[datetime.datetime] = None
     regulatory_info: str = ''
     aed_info: str = ''
@@ -107,7 +105,7 @@ class OpeningChecklist(object):
         discord_id = dbh.match_discord_id(branch, entry['Name of the individual completing the inspection'])
         name = dbh.handle_quotes(entry['Name of the individual completing the inspection'])
         checklist_group = entry.get('Which pool do you need to inspect?')
-        opening_time = dbh.handle_fs_rss_datetime_full_month(entry['Date & Time of Inspection'])
+        time = dbh.handle_fs_rss_datetime_full_month(entry['Date & Time of Inspection'])
         submit_time = entry['Time']
         # Below values optional, thus use of .get()
         regulatory_info = dbh.handle_quotes(entry.get(get_regulatory_key_from_rss_keys(keys), ''))
@@ -125,7 +123,7 @@ class OpeningChecklist(object):
         handicap_chair_function = True if entry.get('Does the handicap chair function as required for usage by guests?') == 'Yes' else False
         spare_battery_present = True if entry.get('Is there a spare battery available for the handicap chair?') == 'Yes' else False
         vacuum_present = True if entry.get('Did you have to remove the robotic vacuum from the pool before opening?') == 'Yes' else False
-        return cls(oc_uuid, discord_id, name, branch.branch_id, checklist_group, opening_time, submit_time, 
+        return cls(oc_uuid, discord_id, name, branch.branch_id, checklist_group, time, submit_time, 
                    regulatory_info, aed_info, adult_pads_expiration_date, pediatric_pads_expiration_date,
                    aspirin_expiration_date, sup_oxygen_info, sup_oxygen_psi, first_aid_info, chlorine, ph, water_temp,
                    lights_function, handicap_chair_function, spare_battery_present, vacuum_present)
@@ -139,7 +137,7 @@ class OpeningChecklist(object):
         name = db_tup[2]
         branch_id = db_tup[3]
         checklist_group = db_tup[4]
-        opening_time = datetime.datetime.fromisoformat(db_tup[5]) if db_tup[5] else None
+        time = datetime.datetime.fromisoformat(db_tup[5]) if db_tup[5] else None
         submit_time = datetime.datetime.fromisoformat(db_tup[6]) if db_tup[6] else None
         # Below values optional, thus use of .get()
         regulatory_info = db_tup[7]
@@ -157,7 +155,7 @@ class OpeningChecklist(object):
         handicap_chair_function = bool(db_tup[19])
         spare_battery_present = bool(db_tup[20])
         vacuum_present = bool(db_tup[21])
-        return cls(oc_uuid, discord_id, name, branch_id, checklist_group, opening_time, submit_time, 
+        return cls(oc_uuid, discord_id, name, branch_id, checklist_group, time, submit_time, 
                    regulatory_info, aed_info, adult_pads_expiration_date, pediatric_pads_expiration_date,
                    aspirin_expiration_date, sup_oxygen_info, sup_oxygen_psi, first_aid_info, chlorine, ph, water_temp,
                    lights_function, handicap_chair_function, spare_battery_present, vacuum_present)
@@ -172,7 +170,7 @@ class ClosingChecklist(object):
     name: str = ''
     branch_id: str = ''
     checklist_group: str = ''
-    closing_time: Optional[datetime.datetime] = None
+    time: Optional[datetime.datetime] = None
     submit_time: Optional[datetime.datetime] = None
     regulatory_info: str = ''
     chlorine: float = 0.0
@@ -188,7 +186,7 @@ class ClosingChecklist(object):
         discord_id = dbh.match_discord_id(branch, entry['Name of the individual completing the inspection'])
         name = dbh.handle_quotes(entry['Name of the individual completing the inspection'])
         checklist_group = entry['Which pool do you need to inspect?']
-        closing_time = dbh.handle_fs_rss_datetime_full_month(entry['Date & Time of Inspection'])
+        time = dbh.handle_fs_rss_datetime_full_month(entry['Date & Time of Inspection'])
         submit_time = entry['Time']
         # Below values optional, thus use of .get()
         regulatory_info = dbh.handle_quotes(entry.get(get_regulatory_key_from_rss_keys(keys), ''))
@@ -197,7 +195,7 @@ class ClosingChecklist(object):
         water_temp = handle_water_temp(entry.get(get_water_temp_from_rss_keys(keys), ''))
         lights_function = False
         vacuum_function = handle_vacuum_closing(entry)
-        return cls(oc_uuid, discord_id, name, branch.branch_id, checklist_group, closing_time, submit_time, 
+        return cls(oc_uuid, discord_id, name, branch.branch_id, checklist_group, time, submit_time, 
                    regulatory_info, chlorine, ph, water_temp, lights_function, vacuum_function)
     
     @classmethod
@@ -209,7 +207,7 @@ class ClosingChecklist(object):
         name = db_tup[2]
         branch_id = db_tup[3]
         checklist_group = db_tup[4]
-        closing_time = datetime.datetime.fromisoformat(db_tup[5])
+        time = datetime.datetime.fromisoformat(db_tup[5])
         submit_time = datetime.datetime.fromisoformat(db_tup[6])
         # Below values optional, thus use of .get()
         regulatory_info = db_tup[7]
@@ -218,7 +216,7 @@ class ClosingChecklist(object):
         water_temp = int(db_tup[10])
         lights_function = bool(db_tup[11])
         vacuum_function = bool(db_tup[12])
-        return cls(oc_uuid, discord_id, name, branch_id, checklist_group, closing_time, submit_time, 
+        return cls(oc_uuid, discord_id, name, branch_id, checklist_group, time, submit_time, 
                    regulatory_info, chlorine, ph, water_temp, lights_function, vacuum_function)
     
     def __bool__(self):

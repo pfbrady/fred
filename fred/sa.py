@@ -26,7 +26,7 @@ class ScanningAudit():
     sup_name: str = ''
     branch_id: str = ''
     pool_id: str = ''
-    sa_time: Optional[datetime.datetime] = None
+    time: Optional[datetime.datetime] = None
     submit_time: Optional[datetime.datetime] = None
     num_of_swimmers: int = 0
     num_of_guards: int = 0

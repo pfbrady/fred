@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Dict, Union, List, Tuple
+from typing import TYPE_CHECKING, Dict, List, Tuple, Optional
 import fred.database_helper as dbh
 import datetime
 
 if TYPE_CHECKING:
     from .branch import Branch
 
-def match_sample_location_key(keys: List[str]):
+def match_sample_location_key(keys: List[str]) -> Optional[str]:
         for key in keys:
             if 'Location of Water Sample' in key:
                 return key
@@ -18,17 +18,17 @@ def handle_water_temp(wt_str: str) -> float:
     return wt_str[:2] if 'degrees' in wt_str else 83
 
 @dataclass
-class ChemCheck(object):
+class ChemCheck():
     chem_uuid: int
     chlorine: float
     ph: float
-    discord_id: Union[int, None] = None
+    discord_id: Optional[int] = None
     name: str = ''
     branch_id: str = ''
     pool_id: str = ''
     sample_location: str = ''
-    sample_time: Union[datetime.datetime, None] = None
-    submit_time: Union[datetime.datetime, None] = None
+    time: Optional[datetime.datetime] = None
+    submit_time: Optional[datetime.datetime] = None
     water_temp: str = ''
     num_of_swimmers: int = 0
 
@@ -47,14 +47,14 @@ class ChemCheck(object):
         name = dbh.handle_quotes(row['Your Name (First)'], row['Your Name (Last)'])
         pool_id = dbh.match_pool_id_from_dict(branch, row)              
         sample_location = row.get('Location of Water Sample, Western', 'NULL')
-        sample_time = dbh.handle_fs_rss_datetime(row['Date/Time'])
+        time = dbh.handle_fs_rss_datetime(row['Date/Time'])
         submit_time = dbh.handle_fs_csv_datetime(row['Time'])
         chlorine = float(row['Chlorine'])
         ph = float(row['PH'])
         water_temp = handle_water_temp(row['Water Temperature'])
         num_of_swimmers = int(row['Total Number of Swimmers'])
         return cls(chem_uuid, chlorine, ph, discord_id, name, branch.branch_id,
-                   pool_id, sample_location, sample_time, submit_time,
+                   pool_id, sample_location, time, submit_time,
                    water_temp, num_of_swimmers)
     
     @classmethod
@@ -65,14 +65,14 @@ class ChemCheck(object):
         pool_id = dbh.match_pool_id_from_dict(branch, entry)
         sample_location_key = match_sample_location_key(entry.keys())
         sample_location = entry.get(sample_location_key, '')
-        sample_time = dbh.handle_fs_rss_datetime(entry['Date/Time'])
+        time = dbh.handle_fs_rss_datetime(entry['Date/Time'])
         submit_time = entry['Time']
         chlorine = float(entry['Chlorine'])
         ph = float(entry['PH'])
         water_temp = handle_water_temp(entry['Water Temperature'])
         num_of_swimmers = int(entry['Total Number of Swimmers'])
         return cls(chem_uuid, chlorine, ph, discord_id, name, branch.branch_id,
-                   pool_id, sample_location, sample_time, submit_time,
+                   pool_id, sample_location, time, submit_time,
                    water_temp, num_of_swimmers)
     
     @classmethod
@@ -85,14 +85,14 @@ class ChemCheck(object):
         branch_id = db_tup[3]
         pool_id = db_tup[4]
         sample_location = db_tup[5]
-        sample_time = datetime.datetime.fromisoformat(db_tup[6])
+        time = datetime.datetime.fromisoformat(db_tup[6])
         submit_time = datetime.datetime.fromisoformat(db_tup[7])
         chlorine = float(db_tup[8])
         ph = float(db_tup[9])
         water_temp = int(db_tup[10])
         num_of_swimmers = int(db_tup[11])
         return cls(chem_uuid, chlorine, ph, discord_id, name, branch_id,
-                   pool_id, sample_location, sample_time, submit_time,
+                   pool_id, sample_location, time, submit_time,
                    water_temp, num_of_swimmers)
     
     def __bool__(self):

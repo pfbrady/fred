@@ -4,7 +4,6 @@ import discord
 from discord.ext import commands, tasks
 import datetime
 import pytz
-import fred.w2w as w2w
 import fred.cogs.cog_helper as ch
 from typing import TYPE_CHECKING, List
 
@@ -44,7 +43,7 @@ class Tasks(commands.Cog):
                                 w2w_employees = branch.w2w_client.unique_employees(shifts)        
                                 discord_users = self.fred.ymca.database.select_discord_users(branch, w2w_employees)
                                 if (last_chem
-                                    and now > last_chem.sample_time + datetime.timedelta(hours=2, minutes=30)
+                                    and now > last_chem.time + datetime.timedelta(hours=2, minutes=30)
                                     and now > pool.opening_time + datetime.timedelta(hours=2, minutes=30)
                                     and now < pool.closing_time - datetime.timedelta(minutes=30)
                                 ):
@@ -55,10 +54,10 @@ class Tasks(commands.Cog):
                                     if lo_candidate:
                                         if not last_opening:
                                             last_opening = lo_candidate
-                                        elif lo_candidate.opening_time < last_opening.opening_time:
+                                        elif lo_candidate.time < last_opening.time:
                                             last_opening = lo_candidate
                                 if (last_opening
-                                    and now > last_opening.opening_time + datetime.timedelta(hours=16)
+                                    and now > last_opening.time + datetime.timedelta(hours=16)
                                     and now > pool.opening_time + datetime.timedelta(hours=1, minutes=30)
                                     and now < pool.closing_time - datetime.timedelta(minutes=30)
                                 ):

@@ -38,7 +38,7 @@ class VAT(object):
     sup_name: str = ''
     branch_id: str = ''
     pool_id: str = ''
-    vat_time: Union[datetime.datetime, None] = None
+    time: Union[datetime.datetime, None] = None
     submit_time: Union[datetime.datetime, None] = None
     num_of_swimmers: int = 0
     num_of_guards: int = 0
@@ -72,9 +72,9 @@ class VAT(object):
         else:
             pool_id = dbh.match_pool_id(branch, row['Which Pool? '])
         if row['Date & Time of Vigilance Test Conducted']:
-            vat_time = dbh.handle_fs_rss_datetime_full_month(row['Date & Time of Vigilance Test Conducted'])
+            time = dbh.handle_fs_rss_datetime_full_month(row['Date & Time of Vigilance Test Conducted'])
         else:
-            vat_time = dbh.handle_fs_rss_datetime(
+            time = dbh.handle_fs_rss_datetime(
                 f"{row['Date of Vigilance Test Conducted']} {row['Time of Vigilance Test Conducted ']}")
         submit_time = dbh.handle_fs_csv_datetime(row['Time'])
         num_of_swimmers = dbh.handle_num_of_guests(row['How many guests do you believe were in the pool?'])
@@ -83,7 +83,7 @@ class VAT(object):
         depth = handle_depth(row['What was the water depth where the stimuli was placed?'])
         response_time = handle_response_time(row['Did the lifeguard being vigilance tested respond to the stimuli?'])
         return cls(vat_uuid, guard_discord_id, guard_name, sup_discord_id, sup_name, branch.branch_id, pool_id, 
-                   vat_time, submit_time, num_of_swimmers, num_of_guards, stimuli, depth, response_time)
+                   time, submit_time, num_of_swimmers, num_of_guards, stimuli, depth, response_time)
     
     @classmethod
     def from_rss_entry(cls, branch: Branch, entry: Dict[str, str]):
@@ -93,7 +93,7 @@ class VAT(object):
         sup_discord_id = dbh.match_discord_id(branch, entry['Who monitored & conducted the vigilance test?'])
         sup_name = dbh.handle_quotes(entry['Who monitored & conducted the vigilance test?'])
         pool_id = dbh.match_pool_id(branch, entry['Which Pool? '])
-        vat_time = dbh.handle_fs_rss_datetime(
+        time = dbh.handle_fs_rss_datetime(
             f"{entry['Date of Vigilance Test Conducted']} {entry['Time of Vigilance Test Conducted ']}")
         submit_time = entry['Time']
         num_of_swimmers = dbh.handle_num_of_guests(entry['How many guests do you believe were in the pool?'])
@@ -102,7 +102,7 @@ class VAT(object):
         depth = handle_depth(entry['What was the water depth where the stimuli was placed?'])
         response_time = handle_response_time(entry['Did the lifeguard being vigilance tested respond to the stimuli?'])
         return cls(vat_uuid, guard_discord_id, guard_name, sup_discord_id, sup_name, branch.branch_id, pool_id, 
-                   vat_time, submit_time, num_of_swimmers, num_of_guards, stimuli, depth, response_time)
+                   time, submit_time, num_of_swimmers, num_of_guards, stimuli, depth, response_time)
     
     @classmethod
     def from_database(cls, db_tup: Tuple[str]):
@@ -115,7 +115,7 @@ class VAT(object):
         sup_name = db_tup[4]
         branch_id = db_tup[5]
         pool_id = db_tup[6]
-        vat_time = datetime.datetime.fromisoformat(db_tup[7])
+        time = datetime.datetime.fromisoformat(db_tup[7])
         submit_time = datetime.datetime.fromisoformat(db_tup[8])
         num_of_swimmers = int(db_tup[9])
         num_of_guards = int(db_tup[10])
@@ -123,7 +123,7 @@ class VAT(object):
         depth = float(db_tup[12])
         response_time = float(db_tup[13])
         return cls(vat_uuid, guard_discord_id, guard_name, sup_discord_id, sup_name, branch_id, pool_id, 
-                   vat_time, submit_time, num_of_swimmers, num_of_guards, stimuli, depth, response_time)
+                   time, submit_time, num_of_swimmers, num_of_guards, stimuli, depth, response_time)
     
     def __bool__(self):
         return False if self.vat_uuid == 0 or None else True
