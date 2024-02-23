@@ -2,6 +2,7 @@ from .branch import *
 from .chem import *
 from .database_helper import *
 from .database import *
+from .dashboard import *
 from .daxko import *
 from .fred import *
 from .in_service import *
