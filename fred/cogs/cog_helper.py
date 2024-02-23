@@ -19,7 +19,7 @@ def vbs(branch: Branch, dt: datetime.datetime) -> Tuple[Dict[int, int], Dict[int
     for discord_user in branch.guild.members:
         if branch.guild.get_role(branch.guild_role_ids['supervisor']) in discord_user.roles:
             # number of vats, number of shifts, ratio of vats per shift
-            vats_by_sup[discord_user.id] = [0, 0, 'N/A']
+            vats_by_sup[discord_user] = [0, 0, 'N/A']
 
     # Adding the number of VATs to each sup total
     vats = database.select_vats_mtd(branch, dt)
@@ -30,9 +30,9 @@ def vbs(branch: Branch, dt: datetime.datetime) -> Tuple[Dict[int, int], Dict[int
 
 
     vbs_incomplete = {}
-    shift_dict_by_sup = branch.w2w_client.shifts_sorted_by_employee_id(datetime.date(dt.year, dt.month, 1), dt.date(), [branch.w2w_client.supervisor])
-    for w2w_employee_id, shift_list in shift_dict_by_sup.items():
-        discord_user = database.select_discord_user(branch, branch.get_w2w_employee_by_id(w2w_employee_id))
+    shift_dict_by_sup = branch.w2w_client.shifts_sorted_by_employee(datetime.date(dt.year, dt.month, 1), dt.date(), [branch.w2w_client.supervisor])
+    for w2w_employee, shift_list in shift_dict_by_sup.items():
+        discord_user = database.select_discord_user(branch, branch.get_w2w_employee_by_id(w2w_employee.id))
         if discord_user and discord_user.id in vats_by_sup:
             num_of_shifts = len(shift_list)
             num_of_vats = vats_by_sup[discord_user.id][0]
