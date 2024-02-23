@@ -157,7 +157,7 @@ class YMCADatabase(object):
                 BEGIN;
                 INSERT INTO w2w_users
                 VALUES(
-                    {employee.w2w_employee_id},
+                    {employee.id},
                     {discord_id},
                     '{employee.first_name}',
                     '{employee.last_name}',
@@ -168,9 +168,9 @@ class YMCADatabase(object):
                 COMMIT;
             """)
         except sqlite3.IntegrityError:
-            log.log(logging.WARN, f"W2W Employee {employee.first_name} {employee.last_name} (ID: {employee.w2w_employee_id}) already in table 'w2w_users'")
+            log.log(logging.WARN, f"W2W Employee {employee.first_name} {employee.last_name} (ID: {employee.id}) already in table 'w2w_users'")
         else:
-            log.log(logging.INFO, f"W2W Employee {employee.first_name} {employee.last_name} (ID: {employee.w2w_employee_id}) inserted into table 'w2w_users'")
+            log.log(logging.INFO, f"W2W Employee {employee.first_name} {employee.last_name} (ID: {employee.id}) inserted into table 'w2w_users'")
 
 
 
@@ -345,7 +345,7 @@ class YMCADatabase(object):
         try:
             cursor.execute(f"""
                 SELECT discord_id FROM w2w_users
-                WHERE id = {employee.w2w_employee_id};
+                WHERE id = {employee.id};
             """)
         except Exception as e:
             print(e)
@@ -357,9 +357,6 @@ class YMCADatabase(object):
             else:
                 self.insert_w2w_employee(branch, employee)
                 return self.select_discord_user(branch, employee)
-            
-    def select_discord_users2(self, branch: Branch, employees: List[whentowork.Employee]) -> List[discord.Member]:
-        return [self.select_discord_user(branch, employee) for employee in employees if self.select_discord_user(branch, employee)]
             
     def select_discord_users(self, branch: Branch, employees: List[whentowork.Employee]) -> List[discord.Member]:
         selected_users = []
@@ -410,44 +407,30 @@ class YMCADatabase(object):
         else:
             return VAT.from_database(cursor.fetchone())
         
-    def select_vats_to_date(self, branch: Branch, dt_vats_after: datetime.datetime) -> List[VAT]:
+    def select_vats(self, branch: Branch, start_dt: datetime.datetime, end_dt: datetime.datetime) -> List[VAT]:
         cursor = self.connection.cursor()
         try:
             cursor.execute(f"""
                 SELECT * FROM vats
-                WHERE vat_time > '{dt_vats_after}' AND branch_id = '{branch.branch_id}';
+                WHERE branch_id = '{branch.branch_id}'
+                AND vat_time >= '{start_dt}'
+                AND vat_time <= '{end_dt}';
             """)
         except Exception as e:
             print(e)
         else:
             return [VAT.from_database(vat) for vat in cursor.fetchall()]
         
-    def select_vats_dtd(self, branch: Branch, dt_now: datetime.datetime) -> List[VAT]:
-        return self.select_vats_to_date(branch, datetime.datetime(dt_now.year, dt_now.month, dt_now.day))
-        
-    def select_vats_mtd(self, branch: Branch, dt_now: datetime.datetime) -> List[VAT]:
-        return self.select_vats_to_date(branch, datetime.datetime(dt_now.year, dt_now.month, 1))
-    
-    def select_vats_ytd(self, branch: Branch, dt_now: datetime.datetime) -> List[VAT]:
-        return self.select_vats_to_date(branch, datetime.datetime(dt_now.year, 1, 1))
-        
-    def select_chems_to_date(self, branch: Branch, dt_chems_after: datetime.datetime) -> List[ChemCheck]:
+    def select_chems(self, branch: Branch, start_dt: datetime.datetime, end_dt: datetime.datetime) -> List[ChemCheck]:
         cursor = self.connection.cursor()
         try:
             cursor.execute(f"""
                 SELECT * FROM chem_checks
-                WHERE sample_time > '{dt_chems_after}' AND branch_id = '{branch.branch_id}';
+                WHERE branch_id = '{branch.branch_id}'
+                AND sample_time >= '{start_dt}'
+                AND sample_time <= '{end_dt}';
             """)
         except Exception as e:
             print(e)
         else:
             return [ChemCheck.from_database(chem) for chem in cursor.fetchall()]
-        
-    def select_chems_dtd(self, branch: Branch, dt_now: datetime.datetime) -> List[ChemCheck]:
-        return self.select_chems_to_date(branch, datetime.datetime(dt_now.year, dt_now.month, dt_now.day))
-        
-    def select_chems_mtd(self, branch: Branch, dt_now: datetime.datetime) -> List[ChemCheck]:
-        return self.select_chems_to_date(branch, datetime.datetime(dt_now.year, dt_now.month, 1))
-    
-    def select_chems_ytd(self, branch: Branch, dt_now: datetime.datetime) -> List[ChemCheck]:
-        return self.select_chems_to_date(branch, datetime.datetime(dt_now.year, 1, 1))
