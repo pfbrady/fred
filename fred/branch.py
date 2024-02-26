@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from datetime import date, datetime
 from .w2w import YMCAW2WClient
 from .pool_group import PoolGroup
 import logging
-from whentowork import Shift, Position, Employee
+from whentowork import Employee
 from typing import TYPE_CHECKING, List, Dict, Optional, Union
 
 if TYPE_CHECKING:
@@ -68,30 +67,6 @@ class Branch(object):
             pool_group.w2w_lifeguard_position = self.w2w_client.get_position_by_id(pool_group.w2w_lifeguard_position_id)
             pool_group.w2w_supervisor_position = self.w2w_client.get_position_by_id(pool_group.w2w_supervisor_position_id)
 
-    def update_pools(self):
-        self.update_pools_open()
-        self.update_pools_extreme_times()
-
-    def update_pools_open(self):
+    def update_pool_groups(self):
         for pool_group in self.pool_groups:
-            for pool in pool_group.pools:
-                pool.update_is_open()
-
-    def update_pools_extreme_times(self):
-        for pool_group in self.pool_groups:
-            shifts: List[Shift] = self.w2w_client.get_shifts_today([pool_group.w2w_lifeguard_position])
-
-            if not shifts:
-                for pool in pool_group.pools:
-                    pool.opening_time, pool.closing_time = None, None
-
-            extreme_times: List[datetime] = []
-            for shift in shifts:
-                if not extreme_times:
-                    extreme_times = [shift.start_datetime, shift.end_datetime]
-                if shift.start_datetime < extreme_times[0]:
-                    extreme_times[0] = shift.start_datetime
-                if shift.end_datetime > extreme_times[1]:
-                    extreme_times[1] = shift.end_datetime
-            for pool in pool_group.pools:
-                pool.opening_time, pool.closing_time = extreme_times
+            pool_group.update_pools(self.w2w_client.get_shifts_today([pool_group.w2w_lifeguard_position]))

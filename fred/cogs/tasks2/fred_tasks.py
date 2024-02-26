@@ -16,16 +16,21 @@ from itertools import cycle
 
 #status = cycle(['status 1', 'status 2', 'status 3'])
 
+
 class Tasks(commands.Cog):
     def __init__(self, fred):
         self.fred: Fred = fred
-        self.update_tables.start()
-        self.send_vats_to_sups.start()
-        self.check_pool_extreme_times.start()
+        self.tasks = [
+            self.update_tables,
+            self.send_vats_to_sups#,
+            #self.check_pool_extreme_times
+        ]
+        for task in self.tasks:
+            task.start()
 
     def cog_unload(self):
-        self.update_tables.cancel()
-        self.check_pool_extreme_times.cancel()
+        for task in self.tasks:
+            task.cancel()
 
     @tasks.loop(minutes=30)
     async def update_tables(self):
@@ -81,7 +86,7 @@ class Tasks(commands.Cog):
     @tasks.loop(time=datetime.time(hour=0, minute=15, tzinfo=pytz.timezone('US/Eastern')))
     async def check_pool_extreme_times(self):
         for branch in self.fred.ymca.branches.values():
-            branch.update_pools()
+            branch.update_pool_groups()
             for guild in self.fred.guilds:
                     for channel in guild.text_channels:
                         if channel.name == 'test3':

@@ -30,4 +30,4 @@ class YMCA(object):
                 elif branch.test_guild_id == guild.id:
                     branch.test_guild = guild
             branch.init_w2w_positions()
-            branch.update_pools()
+            branch.update_pool_groups()

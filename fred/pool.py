@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import fred.daxko as daxko
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 import datetime
 
 if TYPE_CHECKING:
-    from .pool_group import PoolGroup
+    from typing import List, Optional
 
 
 class Pool(object):
@@ -16,11 +16,11 @@ class Pool(object):
         self.name: str = pool['name']
         self.aliases: List[str] = pool['aliases']
         self.is_open: bool = False
-        self.opening_time: datetime.datetime = None
-        self.closing_time: datetime.datetime = None
+        self.opening_time: Optional[datetime.datetime] = None
+        self.closing_time: Optional[datetime.datetime] = None
+        self.chlorine: Optional[int] = None
+        self.ph: Optional[float] = None
         self.checklists: List[str] = pool['checklists']
-        self.chlorine: int = None
-        self.ph: float = None
 
     def update_deps(self):
         self.update_is_open()
