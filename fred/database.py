@@ -189,7 +189,7 @@ class YMCADatabase(object):
                 INSERT INTO chem_checks
                 VALUES(
                     {chem.chem_uuid}, {chem_di}, '{chem.name}', '{branch.branch_id}',
-                    '{chem.pool_id}', '{chem.sample_location}', '{chem.sample_time}',
+                    '{chem.pool_id}', '{chem.sample_location}', '{chem.time}',
                     '{chem.submit_time}', {chem.chlorine}, {chem.ph}, {chem.water_temp},
                     {chem.num_of_swimmers}
                 );
@@ -214,7 +214,7 @@ class YMCADatabase(object):
                 INSERT INTO vats
                 VALUES(
                     {vat.vat_uuid}, {vat_gdi}, '{vat.guard_name}', {vat_sdi}, '{vat.sup_name}', '{branch.branch_id}',
-                    '{vat.pool_id}', '{vat.vat_time}', '{vat.submit_time}', {vat.num_of_swimmers}, {vat.num_of_guards},
+                    '{vat.pool_id}', '{vat.time}', '{vat.submit_time}', {vat.num_of_swimmers}, {vat.num_of_guards},
                     '{vat.stimuli}', {vat.depth}, {vat.response_time}
                 );
                 COMMIT;
@@ -238,7 +238,7 @@ class YMCADatabase(object):
                 INSERT INTO opening_checklists
                 VALUES(
                     {o.oc_uuid}, {oc_di}, '{o.name}', '{branch.branch_id}', '{o.checklist_group}',
-                    '{o.opening_time}', '{o.submit_time}', '{o.regulatory_info}', '{o.aed_info}',
+                    '{o.time}', '{o.submit_time}', '{o.regulatory_info}', '{o.aed_info}',
                     '{o.adult_pads_expiration_date}', '{o.pediatric_pads_expiration_date}',
                     '{o.aspirin_expiration_date}', '{o.sup_oxygen_info}', '{o.sup_oxygen_psi}', '{o.first_aid_info}',
                     {o.chlorine}, {o.ph}, {o.water_temp}, '{o.lights_function}', '{o.handicap_chair_function}',
@@ -264,7 +264,7 @@ class YMCADatabase(object):
                 INSERT INTO closing_checklists
                 VALUES(
                     {c.oc_uuid}, {oc_di}, '{c.name}', '{branch.branch_id}', '{c.checklist_group}',
-                    '{c.closing_time}', '{c.submit_time}', '{c.regulatory_info}', {c.chlorine}, {c.ph},
+                    '{c.time}', '{c.submit_time}', '{c.regulatory_info}', {c.chlorine}, {c.ph},
                     {c.water_temp}, '{c.lights_function}', '{c.vacuum_function}'
                 );
                 COMMIT;
