@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import datetime
 import discord
-import fred.cogs.cog_helper as ch
-import fred.dashboard as dash
+from fred.dashboard import SupervisorReport, GuardReport, ReportType
 
 from typing import TYPE_CHECKING
 
@@ -72,9 +71,9 @@ class Formstack_Commands(discord.app_commands.Group):
             await interaction.response.send_message(f"# Most Recent VAT:\n{vat_formatted}", ephemeral=True)
         else:
             if 'guard-dashboard' in group:
-                report = dash.GuardReport(dash.ReportType.MTD, now)
+                report = GuardReport(ReportType.MTD, now)
             else:
-                report = dash.SupervisorReport(dash.ReportType.MTD, now)
+                report = SupervisorReport(ReportType.MTD, now)
             report.run_report(int_branch, interaction.user, include_vats=True)
             mobile = True if 'mobile' in group else False
             await report.send_report(interaction=interaction, mobile=mobile)

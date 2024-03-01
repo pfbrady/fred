@@ -280,7 +280,7 @@ class Report():
         self.start_dt, self.end_dt = self.report_time_elapsed
         self.color = discord.Colour.from_str('#008080')
         self.title = f'{self.position_type.value.capitalize()} {self.report_type.value} Report'
-        self.footer = f'{self.report_dt}'
+        self.footer = f"{self.report_dt.strftime('%d %b %Y, %I:%M%p')}"
 
     @property
     def report_time_elapsed(self) -> Tuple[datetime.datetime, datetime.datetime]:

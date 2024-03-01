@@ -4,7 +4,7 @@ import discord
 from discord.ext import commands, tasks
 import datetime
 import pytz
-import fred.cogs.cog_helper as ch
+from fred.dashboard import SupervisorReport, GuardReport, ReportType
 from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
@@ -22,8 +22,8 @@ class Tasks(commands.Cog):
         self.fred: Fred = fred
         self.tasks = [
             self.update_tables,
-            self.send_vats_to_sups#,
-            #self.check_pool_extreme_times
+            self.send_vats_to_sups,
+            self.check_pool_extreme_times
         ]
         for task in self.tasks:
             task.start()
@@ -70,7 +70,6 @@ class Tasks(commands.Cog):
 
     @update_tables.before_loop
     async def before_update_tables(self):
-        print('Waiting for Fred to be ready before initializing update_tables task')
         await self.fred.wait_until_ready()
 
     @tasks.loop(time=datetime.time(hour=14, minute=9, tzinfo=pytz.timezone('US/Eastern')))
@@ -80,8 +79,13 @@ class Tasks(commands.Cog):
             for branch in self.fred.ymca.branches.values():         
                 for channel in branch.guild.text_channels:
                     if channel.name == 'test3':
-                        embed = discord.Embed(color=discord.Colour.from_str('#008080'), title=f"Summary of VATs (Guards, {now.strftime('%B %Y')})", description=ch.vat_sup_dashboard(branch, now))
-                        await channel.send(embed=embed)
+                        report = SupervisorReport(ReportType.MTD, now)
+                        report.run_report(branch, run_by=self.fred.user, include_vats=True)
+                        await report.send_report(channel=channel, mobile=False)
+    
+    @send_vats_to_sups.before_loop
+    async def before_send_vats_to_sups(self):
+        await self.fred.wait_until_ready()
 
     @tasks.loop(time=datetime.time(hour=0, minute=15, tzinfo=pytz.timezone('US/Eastern')))
     async def check_pool_extreme_times(self):
@@ -91,6 +95,10 @@ class Tasks(commands.Cog):
                     for channel in guild.text_channels:
                         if channel.name == 'test3':
                             await channel.send(f"Updating opening/closing times for each pool at {branch.name} Branch.")
+
+    @check_pool_extreme_times.before_loop
+    async def check_pool_extreme_times(self):
+        await self.fred.wait_until_ready()
 
 async def setup(fred: Fred):
     await fred.add_cog(Tasks(fred))
