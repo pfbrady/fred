@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import discord
 import fred.cogs.cog_helper as ch
+import fred.dashboard as dash
 
 from typing import TYPE_CHECKING
 
@@ -54,10 +55,11 @@ class Formstack_Commands(discord.app_commands.Group):
     )-> List[discord.app_commands.Choice[str]]:
         return [
             discord.app_commands.Choice(name=default_pos, value=default_pos) 
-            for default_pos in ['last', 'guard-dashboard', 'sup-dashboard'] if current.lower() in default_pos.lower()
+            for default_pos in ['last', 'guard-dashboard', 'guard-dashboard-mobile', 'sup-dashboard', 'sup-dashboard-mobile'] if current in default_pos
         ]
 
     @discord.app_commands.command(description="Summary of VAT information")
+    @discord.app_commands.describe(group="Type of VAT summary you would like to see. For dashboards, please select '-mobile' if you are on mobile to correctly resolve mentions.")
     @discord.app_commands.autocomplete(group=vats_pool_auto)
     async def vats(self, interaction:discord.Interaction, group: str):
         int_branch = self.fred.ymca.get_branch_by_guild_id(interaction.guild_id)
@@ -68,13 +70,14 @@ class Formstack_Commands(discord.app_commands.Group):
             pool_name = pool.name if pool else 'Pool Name Error'
             vat_formatted = f'Guard Name: <@{vat.guard_discord_id}>\n Supervisor Name: <@{vat.sup_discord_id}>\n VAT ID: {vat.vat_uuid}\n Pool: {pool_name}\n Number of Swimmers: {vat.num_of_swimmers}\n Number of Guards: {vat.num_of_guards}\n Stimuli: {vat.stimuli}\n Pass?: {vat.vat_pass}\n Response Time (s): {vat.response_time}\n Time: {vat.time}\n\n'
             await interaction.response.send_message(f"# Most Recent VAT:\n{vat_formatted}", ephemeral=True)
-        elif group == 'guard-dashboard':
-            embed = discord.Embed(color=discord.Colour.from_str('#008080'), title=f"Summary of VATs (Guards, {now.strftime('%B %Y')})", description=ch.vat_guard_dashboard(int_branch, now))
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-            # await interaction.response.send_message(f"# Summary of VATs (Guards, {now.strftime('%B %Y')})\n {self.vat_guard_dashboard(int_branch, now)}", ephemeral=True)
         else:
-            embed = discord.Embed(color=discord.Colour.from_str('#008080'), title=f"Summary of VATs (Supervisors, {now.strftime('%B %Y')})", description=ch.vat_sup_dashboard(int_branch, now))
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            if 'guard-dashboard' in group:
+                report = dash.GuardReport(dash.ReportType.MTD, now)
+            else:
+                report = dash.SupervisorReport(dash.ReportType.MTD, now)
+            report.run_report(int_branch, interaction.user, include_vats=True)
+            mobile = True if 'mobile' in group else False
+            await report.send_report(interaction=interaction, mobile=mobile)
 
 async def setup(fred: Fred):
     fred.tree.add_command(Formstack_Commands(name="form", description="Commands for fetching information from Formstack", fred=fred))
