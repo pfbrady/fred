@@ -327,7 +327,7 @@ class Report():
                 }[self.position_type](discord_user.id, discord_user.display_name, self.report_type, **kwargs))
 
         positions = {
-            PositionType.LIFEGUARD: branch.w2w_client.lifeguards,
+            PositionType.LIFEGUARD: branch.w2w_client.lifeguard_positions,
             PositionType.SUPERVISOR: [branch.w2w_client.supervisor],
             PositionType.INSTRUCTOR: [branch.w2w_client.swim_instructor]
         }[self.position_type]

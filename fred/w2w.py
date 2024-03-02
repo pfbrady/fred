@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, date, timedelta
-from typing import TYPE_CHECKING, List, Dict, Tuple, Union
+from typing import TYPE_CHECKING, List, Dict, Optional
 from whentowork import Shift, Position, Client, Employee
 from whentowork.types import Shift as ShiftPayload
 import logging
@@ -17,13 +17,25 @@ class YMCAW2WClient(Client):
         self._update_w2w_positions(position_ids)
 
     def _update_w2w_positions(self, position_ids: YMCAW2WClientPayload):
-        self.director: Position = self.get_position_by_id(position_ids['director'])
-        self.specialist: Position = self.get_position_by_id(position_ids['specialist'])
-        self.supervisor: Position = self.get_position_by_id(position_ids['supervisor'])
-        self.lifeguards: List[Position] = [self.get_position_by_id(v) for v in position_ids['lifeguard'].values()]
-        self.swim_instructor: Position = self.get_position_by_id(position_ids["swim_instructor"])
-        self.private_swim_instructor: Position = self.get_position_by_id(position_ids["private_swim_instructor"])
-        self.swam: Position = self.get_position_by_id(position_ids["swam"])
+        self.director: Optional[Position] = self.get_position_by_id(position_ids['director'])
+        self.specialist: Optional[Position] = self.get_position_by_id(position_ids['specialist'])
+        self.supervisor: Optional[Position] = self.get_position_by_id(position_ids['supervisor'])
+        self.swim_instructor: Optional[Position] = self.get_position_by_id(position_ids["swim_instructor"])
+        self.private_swim_instructor: Optional[Position] = self.get_position_by_id(position_ids["private_swim_instructor"])
+        self.swam: Optional[Position] = self.get_position_by_id(position_ids["swam"])
+        self._lifeguards: Optional[List[Position]] = [self.get_position_by_id(v) for v in position_ids['lifeguard'].values()]
+
+    @property
+    def lifeguard_positions(self) -> List[Position]:
+        return [pos for pos in self._lifeguards if pos]
+    
+    @property
+    def swim_instructor_positions(self) -> List[Position]:
+        return [pos for pos in [self.swim_instructor, self.private_swim_instructor, self.swam] if pos]
+    
+    @property
+    def leadership_positions(self) -> List[Position]:
+        return [pos for pos in [self.director, self.specialist, self.supervisor] if pos]
 
     def get_shifts_now(self, positions: List[Position]) -> List[Shift]:
         now = datetime.now()
@@ -64,9 +76,11 @@ class YMCAW2WClient(Client):
         range_shifts = self.get_shifts_by_date(date_start, date_end)
         rs_filtered_to_position = self.filter_shifts(range_shifts, positions=positions)
         return self._sort_shifts_by_employee(rs_filtered_to_position)
-
-        
-
+    
+    def shifts_sorted_by_position(self, date_start: date, date_end: date, positions: List[Position]) -> Dict[Position, List[Shift]]:
+        range_shifts = self.get_shifts_by_date(date_start, date_end)
+        rs_filtered_to_position = self.filter_shifts(range_shifts, positions=positions)
+        return 
     
     @staticmethod
     def filter_shifts(shifts: List[Shift], dt_start: datetime = None, dt_end: datetime = None, positions: List[Position] = None):
