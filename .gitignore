@@ -58,11 +58,14 @@ cover/
 # Formstack csv exports:
 *.csv
 
+# VSCode Stuff
+.vscode
+
 # YMCA JSON Data
-ymca.json
+config.json
 
 # Sqlite stuff:
-*.db
+*.db*
 
 # Django stuff:
 *.log

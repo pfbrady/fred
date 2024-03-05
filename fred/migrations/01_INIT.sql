@@ -1,0 +1,129 @@
+BEGIN;
+CREATE TABLE IF NOT EXISTS branches(
+    id PRIMARY KEY NOT NULL,
+    name NOT NULL
+);
+CREATE TABLE IF NOT EXISTS pool_groups(
+    id PRIMARY KEY NOT NULL,
+    branch_id NOT NULL,
+    name NOT NULL,
+    FOREIGN KEY(branch_id) REFERENCES branches(id)
+);
+CREATE TABLE IF NOT EXISTS pools(
+    id PRIMARY KEY NOT NULL,
+    branch_id NOT NULL,
+    pool_group_id NOT NULL,
+    name NOT NULL,
+    FOREIGN KEY(branch_id) REFERENCES branches(id),
+    FOREIGN KEY(pool_group_id) REFERENCES pool_groups(id)
+);
+CREATE TABLE IF NOT EXISTS discord_users(
+    id PRIMARY KEY NOT NULL, 
+    username NOT NULL, 
+    nickname NOT NULL,
+    branch_id,
+    FOREIGN KEY(branch_id) REFERENCES branches(id)
+);
+CREATE TABLE IF NOT EXISTS w2w_users(
+    id PRIMARY KEY NOT NULL,
+    discord_id UNIQUE,
+    first_name,
+    last_name,
+    branch_id,
+    email,
+    cert_expiration_date,
+    FOREIGN KEY(discord_id) REFERENCES discord_users(id),
+    FOREIGN KEY(branch_id) REFERENCES branches(id)
+);
+CREATE TABLE IF NOT EXISTS pectora_users(
+    id PRIMARY KEY NOT NULL,
+    discord_id UNIQUE,
+    first_name,
+    last_name,
+    branch_id,
+    email,
+    cert_expiration_date,
+    FOREIGN KEY(discord_id) REFERENCES discord_users(id),
+    FOREIGN KEY(branch_id) REFERENCES branches(id)
+);
+CREATE TABLE IF NOT EXISTS chem_checks(
+    chem_uuid PRIMARY KEY NOT NULL,
+    discord_id,
+    name,
+    branch_id,
+    pool_id,
+    sample_location,
+    sample_time,
+    submit_time, 
+    chlorine,
+    ph,
+    water_temp,
+    num_of_swimmers,
+    FOREIGN KEY(discord_id) REFERENCES discord_users(id),
+    FOREIGN KEY(branch_id) REFERENCES branches(id),
+    FOREIGN KEY(pool_id) REFERENCES pools(id)
+);
+CREATE TABLE IF NOT EXISTS vats(
+    vat_uuid PRIMARY KEY NOT NULL,
+    guard_discord_id,
+    guard_name,
+    sup_discord_id,
+    sup_name,
+    branch_id,
+    pool_id,
+    vat_time,
+    submit_time,
+    num_of_swimmers,
+    num_of_guards,
+    stimuli,
+    depth,
+    response_time,
+    FOREIGN KEY(guard_discord_id) REFERENCES discord_users(id),
+    FOREIGN KEY(sup_discord_id) REFERENCES discord_users(id),
+    FOREIGN KEY(branch_id) REFERENCES branches(id),
+    FOREIGN KEY(pool_id) REFERENCES pools(id)
+);
+CREATE TABLE IF NOT EXISTS opening_checklists(
+    oc_uuid PRIMARY KEY NOT NULL,
+    discord_id,
+    name,
+    branch_id,
+    checklist_group,
+    opening_time,
+    submit_time,
+    regulatory_info,
+    aed_info,
+    adult_pads_expiration_date,
+    pediatric_pads_expiration_date,
+    aspirin_expiration_date,
+    sup_oxygen_info,
+    sup_oxygen_psi,
+    first_aid_info,
+    chlorine,
+    ph,
+    water_temp,
+    lights_function,
+    handicap_chair_function,
+    spare_battery_present,
+    vacuum_present,
+    FOREIGN KEY(discord_id) REFERENCES discord_users(id),
+    FOREIGN KEY(branch_id) REFERENCES branches(id)
+);
+CREATE TABLE IF NOT EXISTS closing_checklists(
+    oc_uuid PRIMARY KEY NOT NULL,
+    discord_id,
+    name,
+    branch_id,
+    checklist_group,
+    closing_time,
+    submit_time,
+    regulatory_info,
+    chlorine,
+    ph,
+    water_temp,
+    lights_function,
+    vacuum_function,
+    FOREIGN KEY(discord_id) REFERENCES discord_users(id),
+    FOREIGN KEY(branch_id) REFERENCES branches(id)
+);
+COMMIT;
