@@ -1,23 +1,22 @@
 from __future__ import annotations
 
-import discord
 from discord.ext import commands, tasks
 import datetime
 import pytz
-from fred.dashboard import SupervisorReport, GuardReport, ReportType
-from typing import TYPE_CHECKING, List
+from fred.dashboard import SupervisorReport, ReportType
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from typing import List
     from fred import Fred
     from whentowork import Position
 
 
-from itertools import cycle
-
+# from itertools import cycle
 #status = cycle(['status 1', 'status 2', 'status 3'])
 
 
-class Tasks(commands.Cog):
+class FredTasks(commands.Cog):
     def __init__(self, fred):
         self.fred: Fred = fred
         self.tasks = [
@@ -40,7 +39,7 @@ class Tasks(commands.Cog):
                 for pool in pool_group.pools:
                     if pool.is_open:
                         for channel in branch.guild.text_channels:
-                            if channel.name == 'test3':
+                            if channel.name == 'fred-lg-notif':
                                 last_chem = self.fred.ymca.database.select_last_chem(branch, pool)
                                 now = datetime.datetime.now()
                                 positions: List[Position] = [branch.w2w_client.specialist, branch.w2w_client.supervisor, pool_group.w2w_lifeguard_position]
@@ -78,7 +77,7 @@ class Tasks(commands.Cog):
         if now.day == 14 or 28:
             for branch in self.fred.ymca.branches.values():         
                 for channel in branch.guild.text_channels:
-                    if channel.name == 'test3':
+                    if channel.name == 'sup-general':
                         report = SupervisorReport(ReportType.MTD, now)
                         report.run_report(branch, run_by=self.fred.user, include_vats=True)
                         await report.send_report(channel=channel, mobile=False)
@@ -97,8 +96,8 @@ class Tasks(commands.Cog):
                             await channel.send(f"Updating opening/closing times for each pool at {branch.name} Branch.")
 
     @check_pool_extreme_times.before_loop
-    async def check_pool_extreme_times(self):
+    async def before_check_pool_extreme_times(self):
         await self.fred.wait_until_ready()
 
 async def setup(fred: Fred):
-    await fred.add_cog(Tasks(fred))
+    await fred.add_cog(FredTasks(fred))

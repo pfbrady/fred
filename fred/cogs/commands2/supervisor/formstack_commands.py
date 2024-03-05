@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime
 import discord
 from fred.dashboard import SupervisorReport, GuardReport, ReportType
+from fred.cogs.commands2.command_helper import mobile_auto
 
 from typing import TYPE_CHECKING
 
@@ -54,13 +55,15 @@ class Formstack_Commands(discord.app_commands.Group):
     )-> List[discord.app_commands.Choice[str]]:
         return [
             discord.app_commands.Choice(name=default_pos, value=default_pos) 
-            for default_pos in ['last', 'guard-dashboard', 'guard-dashboard-mobile', 'sup-dashboard', 'sup-dashboard-mobile'] if current in default_pos
+            for default_pos in ['last', 'guard-dashboard', 'sup-dashboard'] if current in default_pos
         ]
 
-    @discord.app_commands.command(description="Summary of VAT information")
-    @discord.app_commands.describe(group="Type of VAT summary you would like to see. For dashboards, please select '-mobile' if you are on mobile to correctly resolve mentions.")
-    @discord.app_commands.autocomplete(group=vats_pool_auto)
-    async def vats(self, interaction:discord.Interaction, group: str):
+    @discord.app_commands.command(description="Summary of VAT information.")
+    @discord.app_commands.describe(group="Type of VAT summary you would like to see.")
+    @discord.app_commands.describe(mobile="Select 'True' if you are on mobile to correctly resolve mentions and display."
+    " a shorter message.")
+    @discord.app_commands.autocomplete(group=vats_pool_auto, mobile=mobile_auto)
+    async def vats(self, interaction:discord.Interaction, group: str, mobile: str):
         int_branch = self.fred.ymca.get_branch_by_guild_id(interaction.guild_id)
         now = datetime.datetime.now()
         if group == 'last':
@@ -70,13 +73,12 @@ class Formstack_Commands(discord.app_commands.Group):
             vat_formatted = f'Guard Name: <@{vat.guard_discord_id}>\n Supervisor Name: <@{vat.sup_discord_id}>\n VAT ID: {vat.vat_uuid}\n Pool: {pool_name}\n Number of Swimmers: {vat.num_of_swimmers}\n Number of Guards: {vat.num_of_guards}\n Stimuli: {vat.stimuli}\n Pass?: {vat.vat_pass}\n Response Time (s): {vat.response_time}\n Time: {vat.time}\n\n'
             await interaction.response.send_message(f"# Most Recent VAT:\n{vat_formatted}", ephemeral=True)
         else:
-            if 'guard-dashboard' in group:
+            if group == 'guard-dashboard':
                 report = GuardReport(ReportType.MTD, now)
             else:
                 report = SupervisorReport(ReportType.MTD, now)
             report.run_report(int_branch, interaction.user, include_vats=True)
-            mobile = True if 'mobile' in group else False
-            await report.send_report(interaction=interaction, mobile=mobile)
+            await report.send_report(interaction=interaction, mobile=eval(mobile))
 
 async def setup(fred: Fred):
-    fred.tree.add_command(Formstack_Commands(name="form", description="Commands for fetching information from Formstack", fred=fred))
+    fred.tree.add_command(Formstack_Commands(name="form", description="Commands for fetching information from Formstack.", fred=fred))

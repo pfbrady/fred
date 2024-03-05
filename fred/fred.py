@@ -10,6 +10,7 @@ extensions = (
     "fred.cogs.commands2.admin.admin_commands",
     "fred.cogs.commands2.supervisor.w2w_commands",
     "fred.cogs.commands2.supervisor.formstack_commands",
+    "fred.cogs.commands2.public.schedule_commands",
     "fred.cogs.tasks2.fred_tasks"
 )
 

@@ -332,7 +332,7 @@ class Report():
             PositionType.INSTRUCTOR: [branch.w2w_client.swim_instructor]
         }[self.position_type]
         shift_dict_by_emp = branch.w2w_client.shifts_sorted_by_employee(
-            self.start_dt.date(), self.end_dt.date(), positions)
+            self.start_dt, self.end_dt, positions)
         for w2w_employee, shift_list in shift_dict_by_emp.items():
             discord_user = branch.ymca.database.select_discord_user(
                 branch, branch.get_w2w_employee_by_id(w2w_employee.id)) if branch.guild else None

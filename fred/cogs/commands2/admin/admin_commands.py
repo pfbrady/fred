@@ -1,11 +1,12 @@
 import discord
+import discord.ext.commands
 from fred import Fred
 import logging
 
 other_extensions = (
     "fred.cogs.commands2.supervisor.w2w_commands",
     "fred.cogs.commands2.supervisor.formstack_commands",
-    "fred.cogs.tasks2.fred_tasks"
+    "fred.cogs.commands2.public.schedule_commands"
 )
 
 class Formstack_Commands(discord.app_commands.Group):
@@ -16,7 +17,10 @@ class Formstack_Commands(discord.app_commands.Group):
     @discord.app_commands.command(description="Unloads all Slash Commands for Fred")
     async def unload_commands(self, interaction:discord.Interaction):
         for extension in other_extensions:
-            await self.fred.unload_extension(extension)
+            try:
+                await self.fred.unload_extension(extension)
+            except discord.ext.commands.errors.ExtensionNotLoaded:
+                logging.log(logging.INFO, f"Extension {extension} not loaded.")
         await self.fred.tree.sync()
         await interaction.response.send_message("All commands unloaded", ephemeral=True)
 
@@ -25,12 +29,12 @@ class Formstack_Commands(discord.app_commands.Group):
         for extension in other_extensions:
             try:
                 await self.fred.load_extension(extension)
-            except discord.app_commands.AppCommandError:
-                logging.log(logging.INFO, f"Extension {extension} already loaded.")
-                await interaction.response.send_message("Error Loading Commands", ephemeral=True)
-            except discord.app_commands.CommandInvokeError:
+            except discord.ext.commands.errors.ExtensionNotFound:
                 logging.log(logging.INFO, f"Extension {extension} not found.")
-                await interaction.response.send_message("Error Loading Commands", ephemeral=True)
+                # await interaction.response.send_message("Error Loading Commands", ephemeral=True)
+            except discord.ext.commands.errors.ExtensionAlreadyLoaded:
+                logging.log(logging.INFO, f"Extension {extension} already loaded.")
+                # await interaction.response.send_message("Error Loading Commands", ephemeral=True)
         await self.fred.tree.sync()
         await interaction.response.send_message("All commands loaded", ephemeral=True)
 

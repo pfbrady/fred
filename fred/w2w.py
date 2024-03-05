@@ -72,15 +72,15 @@ class YMCAW2WClient(Client):
         rs_filtered_dict = self._sort_shifts_by_date_and_position(rs_filtered_to_position)
         return self._get_extreme_shifts_from_sorted(rs_filtered_dict, opener_flag)
     
-    def shifts_sorted_by_employee(self, date_start: date, date_end: date, positions: List[Position]) -> Dict[Employee, List[Shift]]:
-        range_shifts = self.get_shifts_by_date(date_start, date_end)
-        rs_filtered_to_position = self.filter_shifts(range_shifts, positions=positions)
+    def shifts_sorted_by_employee(self, dt_start: datetime, dt_end: datetime, positions: List[Position]) -> Dict[Employee, List[Shift]]:
+        range_shifts = self.get_shifts_by_date(dt_start.date(), dt_end.date())
+        rs_filtered_to_position = self.filter_shifts(range_shifts, dt_start, dt_end, positions)
         return self._sort_shifts_by_employee(rs_filtered_to_position)
     
-    def shifts_sorted_by_position(self, date_start: date, date_end: date, positions: List[Position]) -> Dict[Position, List[Shift]]:
-        range_shifts = self.get_shifts_by_date(date_start, date_end)
-        rs_filtered_to_position = self.filter_shifts(range_shifts, positions=positions)
-        return 
+    def shifts_sorted_by_position(self, dt_start: datetime, dt_end: datetime, positions: List[Position]) -> Dict[Position, List[Shift]]:
+        range_shifts = self.get_shifts_by_date(dt_start.date(), dt_end.date())
+        rs_filtered_to_position = self.filter_shifts(range_shifts, dt_start, dt_end, positions)
+        return self._sort_shifts_by_position(rs_filtered_to_position)
     
     @staticmethod
     def filter_shifts(shifts: List[Shift], dt_start: datetime = None, dt_end: datetime = None, positions: List[Position] = None):
@@ -120,6 +120,16 @@ class YMCAW2WClient(Client):
                 shifts_dict[shift.employee].append(shift)
             else:
                 shifts_dict[shift.employee] = [shift]
+        return shifts_dict
+    
+    @staticmethod
+    def _sort_shifts_by_position(shifts: List[Shift]) -> Dict[Position, List[Shift]]:
+        shifts_dict: Dict[Position, List[Shift]] = {}
+        for shift in shifts:
+            if shift.position in shifts_dict:
+                shifts_dict[shift.position].append(shift)
+            else:
+                shifts_dict[shift.position] = [shift]
         return shifts_dict
 
 

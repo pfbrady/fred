@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import discord
+from fred.cogs.commands2.command_helper import mobile_auto
 
 from typing import TYPE_CHECKING, List
 
