@@ -74,7 +74,7 @@ class FredTasks(commands.Cog):
     @tasks.loop(time=datetime.time(hour=14, minute=9, tzinfo=pytz.timezone('US/Eastern')))
     async def send_vats_to_sups(self):
         now = datetime.datetime.now()
-        if now.day == 14 or 28:
+        if now.day == 14 or now.day == 28:
             for branch in self.fred.ymca.branches.values():         
                 for channel in branch.guild.text_channels:
                     if channel.name == 'sup-general':
