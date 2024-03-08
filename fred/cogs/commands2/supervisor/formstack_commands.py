@@ -31,8 +31,10 @@ class Formstack_Commands(discord.app_commands.Group):
         ]
 
     @discord.app_commands.command(description="Summary of chemical checks for the indicated pools")
-    @discord.app_commands.describe(pool="Specific pool location. Options are listed above")
-    @discord.app_commands.autocomplete(pool=chems_pool_auto)
+    @discord.app_commands.describe(
+        pool="Specific pool location. Options are listed above",
+        mobile="Select 'True' if you are on mobile to correctly resolve mentions and display a shorter message.")
+    @discord.app_commands.autocomplete(pool=chems_pool_auto, mobile=mobile_auto)
     async def chems(self, interaction:discord.Interaction, pool: str):
         int_branch = self.fred.ymca.get_branch_by_guild_id(interaction.guild_id)
         selected_chems: List[ChemCheck] = []
@@ -47,7 +49,7 @@ class Formstack_Commands(discord.app_commands.Group):
         chems_formatted = []
         for chem in selected_chems:
             sel_pool = int_branch.get_pool_by_pool_id(chem.pool_id)
-            pool_name = sel_pool.name if pool else 'Pool Name Error'
+            pool_name = sel_pool.name if sel_pool else 'Pool Name Error'
             chems_formatted.append(f'Name: <@{chem.discord_id}>\n Chem Check ID: {chem.chem_uuid}\n Pool: {pool_name}\n Chlorine: {chem.chlorine}\t\tpH: {chem.ph}\n Temperature: {chem.water_temp}\n Number of Swimmers: {chem.num_of_swimmers}\n Time: {chem.time}\n\n')
         await interaction.response.send_message(f"# Summary of Chem Checks:\n{''.join(chems_formatted)}", ephemeral=True)
 
@@ -59,9 +61,9 @@ class Formstack_Commands(discord.app_commands.Group):
         ]
 
     @discord.app_commands.command(description="Summary of VAT information.")
-    @discord.app_commands.describe(group="Type of VAT summary you would like to see.")
-    @discord.app_commands.describe(mobile="Select 'True' if you are on mobile to correctly resolve mentions and display."
-    " a shorter message.")
+    @discord.app_commands.describe(
+        group="Type of VAT summary you would like to see.",
+        mobile="Select 'True' if you are on mobile to correctly resolve mentions and display a shorter message.")
     @discord.app_commands.autocomplete(group=vats_pool_auto, mobile=mobile_auto)
     async def vats(self, interaction:discord.Interaction, group: str, mobile: str):
         int_branch = self.fred.ymca.get_branch_by_guild_id(interaction.guild_id)
