@@ -1,8 +1,10 @@
+"""pool.py module"""
+
 from __future__ import annotations
 
-import fred.daxko as daxko
 from typing import TYPE_CHECKING
 import datetime
+import fred.daxko as daxko
 
 if TYPE_CHECKING:
     from typing import List, Optional
@@ -21,9 +23,6 @@ class Pool(object):
         self.chlorine: Optional[int] = None
         self.ph: Optional[float] = None
         self.checklists: List[str] = pool['checklists']
-
-    def update_deps(self):
-        self.update_is_open()
 
     def update_is_open(self):
         self.is_open = True if self.name in daxko.get_open_pools() else False

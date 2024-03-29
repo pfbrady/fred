@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 import datetime
 import discord
 from fred.dashboard import SupervisorReport, GuardReport, ReportType
 from fred.cogs.commands2.command_helper import mobile_auto
-
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from fred.fred import Fred

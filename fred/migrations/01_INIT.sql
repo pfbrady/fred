@@ -61,7 +61,8 @@ CREATE TABLE IF NOT EXISTS chem_checks(
     num_of_swimmers,
     FOREIGN KEY(discord_id) REFERENCES discord_users(id),
     FOREIGN KEY(branch_id) REFERENCES branches(id),
-    FOREIGN KEY(pool_id) REFERENCES pools(id)
+    FOREIGN KEY(pool_id) REFERENCES pools(id),
+    UNIQUE(discord_id, pool_id, sample_time)
 );
 CREATE TABLE IF NOT EXISTS vats(
     vat_uuid PRIMARY KEY NOT NULL,
