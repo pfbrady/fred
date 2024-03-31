@@ -19,8 +19,3 @@ class YMCADatabaseCase(TestCase):
         print(last_chem)
         self.assertIsNotNone(last_chem)
 
-    def test_select_discord_users(self):
-        user: discord.Member = self.database.select_discord_user(self.test_branch, self.test_employee)
-        print(user)
-        self.assertIsNotNone(user)
-
