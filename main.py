@@ -1,8 +1,8 @@
 """main.py module"""
 
 import logging
-import discord
 from settings import SETTINGS_DICT
+import discord
 from fred import Fred
 
 def run():
