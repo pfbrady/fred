@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-import sqlite3
-import logging
-import datetime
 import csv
+import datetime
+import logging
+import sqlite3
 from typing import TYPE_CHECKING, List, Union
-from .chem import ChemCheck
-from .vat import VAT
-from .oc import OpeningChecklist, ClosingChecklist
-import fred.rss as rss
-import fred.database_helper as dbh
+
 import discord
+
+import fred.database_helper as dbh
+import fred.rss as rss
+from .chem import ChemCheck
+from .oc import OpeningChecklist, ClosingChecklist
+from .vat import VAT
 
 if TYPE_CHECKING:
     from .ymca import YMCA
@@ -20,6 +22,7 @@ if TYPE_CHECKING:
     import whentowork
 
 log = logging.getLogger()
+
 
 class YMCADatabase(object):
     def __init__(self, ymca: YMCA):
@@ -44,11 +47,6 @@ class YMCADatabase(object):
         except Exception as e:
             log.log(logging.WARN, f"Error: Could not initialize database. {e}")
 
-
-
-
-
-
     def init_database_from_branch(self, branch: Branch):
         self.init_branches(branch)
         self.init_discord_users(branch)
@@ -71,7 +69,7 @@ class YMCADatabase(object):
             log.log(logging.INFO, f"Branch {branch.name} (ID: {branch.branch_id}) inserted into table 'branches'")
         finally:
             self.init_pool_groups(branch)
-    
+
     def init_pool_groups(self, branch: Branch):
         cursor = self.connection.cursor()
         for pool_group in branch.pool_groups:
@@ -84,11 +82,14 @@ class YMCADatabase(object):
                     COMMIT;
                 """)
             except sqlite3.IntegrityError:
-                log.log(logging.WARN, f"Pool Group {pool_group.name} (ID: {pool_group.pool_group_id}) already in table 'pool_groups'")
+                log.log(logging.WARN,
+                        f"Pool Group {pool_group.name} (ID: {pool_group.pool_group_id}) already in table 'pool_groups'")
             except Exception as e:
                 log.log(logging.WARN, f"Error adding Pool Group: {e}")
             else:
-                log.log(logging.INFO, f"Pool Group {pool_group.name} (ID: {pool_group.pool_group_id}) inserted into table 'pool_groups'")
+                log.log(logging.INFO,
+                        f"Pool Group {pool_group.name} (ID: {pool_group.pool_group_id}) "
+                        f"inserted into table 'pool_groups'")
             finally:
                 self.init_pools(pool_group)
 
@@ -109,16 +110,6 @@ class YMCADatabase(object):
                 log.log(logging.WARN, f"Error adding Pool: {e}")
             else:
                 log.log(logging.INFO, f"Pool {pool.name} (ID: {pool.pool_id}) inserted into table 'pools'")
-
-
-
-
-
-
-
-
-
-
 
     def init_discord_users(self, branch: Branch) -> None:
         for user in branch.guild.members:
@@ -145,7 +136,8 @@ class YMCADatabase(object):
         except sqlite3.IntegrityError:
             log.log(logging.WARN, f"Discord User {user.display_name} (ID: {user.id}) already in table 'discord_users'")
         else:
-            log.log(logging.DEBUG, f"Discord User {user.display_name} (ID: {user.id}) inserted into table 'discord_users'")
+            log.log(logging.DEBUG,
+                    f"Discord User {user.display_name} (ID: {user.id}) inserted into table 'discord_users'")
 
     def insert_w2w_employee(self, branch: Branch, employee: whentowork.Employee):
         cursor = self.connection.cursor()
@@ -168,17 +160,13 @@ class YMCADatabase(object):
                 COMMIT;
             """)
         except sqlite3.IntegrityError:
-            log.log(logging.WARN, f"W2W Employee {employee.first_name} {employee.last_name} (ID: {employee.id}) already in table 'w2w_users'")
+            log.log(logging.WARN,
+                    f"W2W Employee {employee.first_name} {employee.last_name} "
+                    f"(ID: {employee.id}) already in table 'w2w_users'")
         else:
-            log.log(logging.INFO, f"W2W Employee {employee.first_name} {employee.last_name} (ID: {employee.id}) inserted into table 'w2w_users'")
-
-
-
-
-
-
-
-
+            log.log(logging.INFO,
+                    f"W2W Employee {employee.first_name} {employee.last_name} "
+                    f"(ID: {employee.id}) inserted into table 'w2w_users'")
 
     def insert_chem(self, branch: Branch, chem: ChemCheck) -> bool:
         cursor = self.connection.cursor()
@@ -227,8 +215,7 @@ class YMCADatabase(object):
             log.log(logging.INFO, f"VAT (ID: {vat.vat_uuid}) inserted into table 'vats'")
             return True
         return False
-    
-    
+
     def insert_opening_checklist(self, branch: Branch, o: OpeningChecklist) -> bool:
         cursor = self.connection.cursor()
         oc_di = o.discord_id if o.discord_id else 'NULL'
@@ -254,7 +241,7 @@ class YMCADatabase(object):
             log.log(logging.INFO, f"Opening Checklist (ID: {o.oc_uuid}) inserted into table 'opening_checklists'")
             return True
         return False
-    
+
     def insert_closing_checklist(self, branch: Branch, c: ClosingChecklist) -> bool:
         cursor = self.connection.cursor()
         oc_di = c.discord_id if c.discord_id else 'NULL'
@@ -277,7 +264,7 @@ class YMCADatabase(object):
             log.log(logging.INFO, f"Closing Checklist (ID: {c.oc_uuid}) inserted into table 'closing_checklists'")
             return True
         return False
-    
+
     def load_chems(self, branch: Branch) -> None:
         with open('fred/data/chems.csv', newline='') as csvfile:
             reader = csv.DictReader(csvfile)
@@ -285,7 +272,7 @@ class YMCADatabase(object):
                 chem = ChemCheck.from_csv_row(branch, row)
                 if self.insert_chem(branch, chem):
                     branch.last_chem_id = chem.chem_uuid
-    
+
     def load_vats(self, branch: Branch) -> None:
         with open('fred/data/vats.csv', newline='') as csvfile:
             reader = csv.DictReader(csvfile)
@@ -307,7 +294,7 @@ class YMCADatabase(object):
                 chem = ChemCheck.from_rss_entry(branch, entry)
                 if self.insert_chem(branch, chem):
                     branch.last_chem_id = chem.chem_uuid
-    
+
     def update_vats_rss(self, branch: Branch):
         vats_rss = rss.form_rss_to_dict(branch.rss_links['vats'])
         for entry in vats_rss:
@@ -315,30 +302,26 @@ class YMCADatabase(object):
                 vat = VAT.from_rss_entry(branch, entry)
                 if self.insert_vat(branch, vat):
                     branch.last_vat_id = vat.vat_uuid
-             
-    
+
     def update_opening_rss(self, branch: Branch):
         opening_rss = rss.form_rss_to_dict(branch.rss_links['oc'])
-        opening_rss: List[dict] = list(filter(lambda entry: entry['What checklist do you need to submit?'] == 'Opening Checklist', opening_rss))
+        opening_rss: List[dict] = list(
+            filter(lambda entry: entry['What checklist do you need to submit?'] == 'Opening Checklist', opening_rss))
         for entry in opening_rss:
             if entry['Unique ID'] > branch.last_opening_id:
                 opening_checklist = OpeningChecklist.from_rss_entry(branch, entry)
                 if self.insert_opening_checklist(branch, opening_checklist):
                     branch.last_opening_id = opening_checklist.oc_uuid
-    
+
     def update_closing_rss(self, branch: Branch):
         closing_rss = rss.form_rss_to_dict(branch.rss_links['oc'])
-        closing_rss: List[dict] = list(filter(lambda entry: entry['What checklist do you need to submit?'] == 'Closing Checklist', closing_rss))
+        closing_rss: List[dict] = list(
+            filter(lambda entry: entry['What checklist do you need to submit?'] == 'Closing Checklist', closing_rss))
         for entry in closing_rss:
             if entry['Unique ID'] > branch.last_closing_id:
                 closing_checklist = ClosingChecklist.from_rss_entry(branch, entry)
                 if self.insert_closing_checklist(branch, closing_checklist):
                     branch.last_closing_id = closing_checklist.oc_uuid
-
-
-
-
-
 
     def select_discord_user(self, branch: Branch, employee: whentowork.Employee) -> Union[discord.Member, None]:
         cursor = self.connection.cursor()
@@ -357,7 +340,7 @@ class YMCADatabase(object):
             else:
                 self.insert_w2w_employee(branch, employee)
                 return self.select_discord_user(branch, employee)
-            
+
     def select_discord_users(self, branch: Branch, employees: List[whentowork.Employee]) -> List[discord.Member]:
         selected_users = []
         for employee in employees:
@@ -380,7 +363,7 @@ class YMCADatabase(object):
 
     def select_last_chems(self, branch: Branch, pools: List[Pool]) -> List[ChemCheck]:
         return [self.select_last_chem(branch, pool) for pool in pools]
-    
+
     def select_last_opening(self, branch: Branch, checklist: str):
         cursor = self.connection.cursor()
         try:
@@ -406,7 +389,7 @@ class YMCADatabase(object):
             print(e)
         else:
             return VAT.from_database(cursor.fetchone())
-        
+
     def select_vats(self, branch: Branch, start_dt: datetime.datetime, end_dt: datetime.datetime) -> List[VAT]:
         cursor = self.connection.cursor()
         try:
@@ -420,7 +403,7 @@ class YMCADatabase(object):
             print(e)
         else:
             return [VAT.from_database(vat) for vat in cursor.fetchall()]
-        
+
     def select_chems(self, branch: Branch, start_dt: datetime.datetime, end_dt: datetime.datetime) -> List[ChemCheck]:
         cursor = self.connection.cursor()
         try:

@@ -1,2 +1,2 @@
-class InService():
+class InService:
     pass

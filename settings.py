@@ -1,3 +1,5 @@
+"""settings.py module"""
+
 import json
 
 with open('config.json') as json_file:

@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from .w2w import YMCAW2WClient
-from .pool_group import PoolGroup
 import logging
-from whentowork import Employee
 from typing import TYPE_CHECKING, List, Dict, Optional, Union
+
+from whentowork import Employee
+
+from .pool_group import PoolGroup
+from .w2w import YMCAW2WClient
 
 if TYPE_CHECKING:
     from .ymca import YMCA
@@ -14,7 +16,8 @@ if TYPE_CHECKING:
 
 log = logging.getLogger(__name__)
 
-class Branch(object):
+
+class Branch:
     def __init__(self, ymca: YMCA, branch_id: str, branch: Dict):
         self.ymca: YMCA = ymca
         self.branch_id: str = branch_id
@@ -30,9 +33,10 @@ class Branch(object):
         self.test_guild = None
         self.test_guild_role_ids: Dict[str, Dict[str, int]] = branch['discord_test_role_ids']
 
-        self.pool_groups: List[PoolGroup] = [PoolGroup(branch_id, pool_group_id, pool_group) for pool_group_id, pool_group in branch['pool_groups'].items()]
+        self.pool_groups: List[PoolGroup] = [PoolGroup(branch_id, pool_group_id, pool_group) for
+                                             pool_group_id, pool_group in branch['pool_groups'].items()]
         self._update_w2w_client(branch['w2w_custom_hostname'], branch['w2w_token'], branch['w2w_position_ids'])
-        
+
         self.rss_links: Dict[str, str] = branch['rss_links']
         self.last_chem_id: int = 0
         self.last_vat_id: int = 0
@@ -46,7 +50,7 @@ class Branch(object):
                 if pool_id == pool.pool_id:
                     return pool
         return None
-    
+
     def get_discord_member_by_id(self, discord_user_id: int) -> Optional[Member]:
         user = self.guild.get_member(discord_user_id)
         return user if user else None
@@ -65,7 +69,8 @@ class Branch(object):
     def init_w2w_positions(self):
         for pool_group in self.pool_groups:
             pool_group.w2w_lifeguard_position = self.w2w_client.get_position_by_id(pool_group.w2w_lifeguard_position_id)
-            pool_group.w2w_supervisor_position = self.w2w_client.get_position_by_id(pool_group.w2w_supervisor_position_id)
+            pool_group.w2w_supervisor_position = self.w2w_client.get_position_by_id(
+                pool_group.w2w_supervisor_position_id)
 
     def update_pool_groups(self):
         for pool_group in self.pool_groups:

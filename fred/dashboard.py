@@ -1,21 +1,25 @@
 from __future__ import annotations
 
-import discord
 import datetime
 from enum import Enum
-from fred import ChemCheck, VAT
-
 from typing import TYPE_CHECKING
+
+import discord
+import matplotlib.pyplot as plt
+
+from fred import ChemCheck, VAT
 
 if TYPE_CHECKING:
     from fred import Branch, ScanningAudit, InService
-    from typing import List, Dict, Union, Optional, Tuple
+    from typing import List, Union, Optional, Tuple
     from whentowork import Shift
+
 
 class PositionType(Enum):
     SUPERVISOR = 'supervisor'
     LIFEGUARD = 'lifeguard'
     INSTRUCTOR = 'instructor'
+
 
 class ReportType(Enum):
     DTD = 'Day-to-Date'
@@ -25,24 +29,26 @@ class ReportType(Enum):
     YTD = 'Year-to-Date'
     YEAR = 'Year'
 
+
 class ShiftReport:
     def __init__(self):
         self.shifts: List[Shift] = []
-    
+
     @property
     def num_of_shifts(self) -> int:
         return len(self.shifts)
-    
+
     @property
     def total_hours(self) -> float:
         return sum(shift.duration for shift in self.shifts)
-    
+
     def during_shifts(self, dt: datetime.datetime) -> bool:
         for shift in self.shifts:
-            if dt >= shift.start_datetime and dt <= shift.end_datetime:
+            if shift.start_datetime <= dt <= shift.end_datetime:
                 return True
         return False
-    
+
+
 class ComplianceStrategy:
     def __init__(
             self,
@@ -72,6 +78,7 @@ class ComplianceStrategy:
             in_compliance = True if num >= self.num_target else False
         return in_compliance
 
+
 class InServComplianceStrategy(ComplianceStrategy):
     def init(
             self,
@@ -86,7 +93,7 @@ class InServComplianceStrategy(ComplianceStrategy):
             items_per_hour_target,
             num_target)
         self.hours_per_time_period_target = hours_per_time_period_target
-    
+
     def calc_in_comp(
             self,
             hours_per_time_period: Optional[float] = None,
@@ -95,12 +102,12 @@ class InServComplianceStrategy(ComplianceStrategy):
             items_per_hour: Optional[float] = None,
             num: Optional[int] = None) -> bool:
         in_compliance = super().calc_in_comp(percentage_of_shifts, items_per_shift, items_per_hour, num)
-        if self.hours_per_time_period_target and isinstance(hours_per_time_period, float): 
+        if self.hours_per_time_period_target and isinstance(hours_per_time_period, float):
             in_compliance = True and in_compliance if hours_per_time_period > self.hours_per_time_period_target else False
         return in_compliance
 
 
-class ReportItem():
+class ReportItem:
     def __init__(
             self,
             shift_report: ShiftReport,
@@ -118,7 +125,7 @@ class ReportItem():
     @property
     def num(self) -> int:
         return len(self.items)
-    
+
     @property
     def weight(self) -> int:
         return self._weight if self.shift_report.num_of_shifts else 0
@@ -126,10 +133,10 @@ class ReportItem():
     @property
     def in_compliance(self) -> bool:
         return self.compliance_strat.calc_in_comp(self.shift_unique_percentage, self.per_shift, self.per_hour, self.num)
-    
+
     @property
     def per_hour(self) -> Union[float, str]:
-            return self.num / self.shift_report.total_hours if self.shift_report.total_hours else 'N/A'
+        return self.num / self.shift_report.total_hours if self.shift_report.total_hours else 'N/A'
 
     @property
     def per_shift(self) -> Union[float, str]:
@@ -139,23 +146,24 @@ class ReportItem():
             return float(self.num)
         else:
             return 'N/A'
-    
+
     @property
     def num_shifts_with_unique(self) -> int:
         if self.shift_report.num_of_shifts == 0:
             return 0
         num_shifts = 0
         for shift in self.shift_report.shifts:
-            # Generator that loops over all of the items and increments num_shifts if any of the items happened 
+            # Generator that loops over all the items and increments num_shifts if any of the items happened
             # during the current shift.
-            if any(item.time >= shift.start_datetime and item.time <= shift.end_datetime for item in self.items if isinstance(item.time, datetime.datetime)):
+            if any(shift.start_datetime <= item.time <= shift.end_datetime for item in self.items if
+                   isinstance(item.time, datetime.datetime)):
                 num_shifts += 1
         return num_shifts
-    
+
     @property
     def shift_unique_percentage(self):
         return self.num_shifts_with_unique / self.shift_report.num_of_shifts if self.shift_report.num_of_shifts else 'N/A'
-    
+
     @property
     def summary(self) -> str:
         abbr = self.abbr if self.abbr else self.name
@@ -165,10 +173,11 @@ class ReportItem():
         if isinstance(per_shift, float):
             per_shift = "{:.2f}".format(per_shift)
         return f'{self.name}s: **{self.num}**\t {abbr}s/Shift: **{per_shift}**\t Shift {abbr} %: **{uni_per}**\n'
-    
+
     @property
     def mobile_summary(self) -> str:
         return f'{self.name}s: **{self.num}\t**'
+
 
 class ReportStats:
     def __init__(self, discord_id: int, name: str, report_type: ReportType, **kwargs):
@@ -185,7 +194,7 @@ class ReportStats:
     @property
     def in_compliance(self) -> bool:
         return all([item.in_compliance for item in self.items])
-    
+
     @property
     def total_score(self) -> int:
         return sum([item.weight for item in self.items if item.in_compliance])
@@ -198,13 +207,14 @@ class ReportStats:
     def summary(self) -> str:
         return f'<@{self.discord_id}>\nShifts: **{self.shift_report.num_of_shifts}**\t Total Hours: **{"{:.2f}".format(self.shift_report.total_hours)}**\n{"".join([item.summary for item in self.items])}'
 
+
 class SupervisorReportStats(ReportStats):
     def __init__(
             self,
             discord_id: Optional[int],
             name: Optional[str],
             report_type: ReportType,
-            include_vats: bool = True, 
+            include_vats: bool = True,
             include_chems: bool = True,
             include_scan_auds: bool = True,
             include_in_servs: bool = True,
@@ -227,6 +237,7 @@ class SupervisorReportStats(ReportStats):
     @property
     def items(self) -> List[ReportItem]:
         return [item for item in [self.vats, self.chems, self.scan_auds, self.in_servs] if item]
+
 
 class GuardReportStats(ReportStats):
     def __init__(
@@ -253,20 +264,19 @@ class GuardReportStats(ReportStats):
             self.shift_report,
             'Scanning Audit',
             'SA',
-            ComplianceStrategy(items_per_shift_target=0.50)) if include_scan_auds else None
+            compliance_strat=ComplianceStrategy(items_per_shift_target=0.50)) if include_scan_auds else None
         self.in_servs = ReportItem(
             self.shift_report,
             'In Service',
             'IS',
-            ComplianceStrategy(num_target=2*num_target)) if include_in_servs else None
+            compliance_strat=ComplianceStrategy(num_target=2 * num_target)) if include_in_servs else None
 
     @property
     def items(self) -> List[ReportItem]:
         return [item for item in [self.vats, self.scan_auds, self.in_servs] if item]
-    
 
 
-class Report():
+class Report:
     def __init__(
             self,
             users: List[ReportStats],
@@ -285,30 +295,32 @@ class Report():
     @property
     def report_time_elapsed(self) -> Tuple[datetime.datetime, datetime.datetime]:
         return {ReportType.DTD:
-             (datetime.datetime(self.report_dt.year, self.report_dt.month, self.report_dt.day, 0, 1), self.report_dt),
-         ReportType.DAY: (self.report_dt - datetime.timedelta(1), self.report_dt),
-         ReportType.MTD: (datetime.datetime(self.report_dt.year, self.report_dt.month, 1, 0, 1), self.report_dt),
-         ReportType.MONTH: (self.report_dt - datetime.timedelta(30), self.report_dt),
-         ReportType.YTD: (datetime.datetime(self.report_dt.year, 1, 1, 0, 1), self.report_dt),
-         ReportType.YEAR: (self.report_dt - datetime.timedelta(365), self.report_dt)}[self.report_type]
-    
+                    (datetime.datetime(self.report_dt.year, self.report_dt.month, self.report_dt.day, 0, 1),
+                     self.report_dt),
+                ReportType.DAY: (self.report_dt - datetime.timedelta(1), self.report_dt),
+                ReportType.MTD: (datetime.datetime(self.report_dt.year, self.report_dt.month, 1, 0, 1), self.report_dt),
+                ReportType.MONTH: (self.report_dt - datetime.timedelta(30), self.report_dt),
+                ReportType.YTD: (datetime.datetime(self.report_dt.year, 1, 1, 0, 1), self.report_dt),
+                ReportType.YEAR: (self.report_dt - datetime.timedelta(365), self.report_dt)}[self.report_type]
+
     @property
     def total_num_of_shifts(self) -> int:
         return sum(user.shift_report.num_of_shifts for user in self.users)
-    
+
     @property
     def total_hours(self) -> float:
         return sum(user.shift_report.total_hours for user in self.users)
-    
+
     def num_of_items(self, item_name: str) -> int:
         return sum(item.num for emp in self.users for item in emp.items if item.name == item_name)
-    
+
     def num_of_shifts_with_unique_item(self, item_name: str) -> int:
         return sum(item.num_shifts_with_unique for emp in self.users for item in emp.items if item.name == item_name)
 
     def ratio_of_shifts_with_unique_item(self, item_name: str) -> Union[float, str]:
-        return self.num_of_shifts_with_unique_item(item_name) / self.total_num_of_shifts if self.total_num_of_shifts else 'N/A'
-    
+        return self.num_of_shifts_with_unique_item(
+            item_name) / self.total_num_of_shifts if self.total_num_of_shifts else 'N/A'
+
     def run_report(self, branch: Branch, run_by: discord.User, **kwargs) -> None:
         self.footer = f'Run by {run_by.display_name} at {self.footer}'
         if branch.guild:
@@ -321,10 +333,11 @@ class Report():
         for discord_user in discord_users:
             if discord_role in discord_user.roles:
                 self.users.append({
-                    PositionType.LIFEGUARD: GuardReportStats,
-                    PositionType.SUPERVISOR: SupervisorReportStats,
-                    PositionType.INSTRUCTOR: ReportStats
-                }[self.position_type](discord_user.id, discord_user.display_name, self.report_type, **kwargs))
+                                      PositionType.LIFEGUARD: GuardReportStats,
+                                      PositionType.SUPERVISOR: SupervisorReportStats,
+                                      PositionType.INSTRUCTOR: ReportStats
+                                  }[self.position_type](discord_user.id, discord_user.display_name, self.report_type,
+                                                        **kwargs))
 
         positions = {
             PositionType.LIFEGUARD: branch.w2w_client.lifeguard_positions,
@@ -341,7 +354,8 @@ class Report():
                     if emp.discord_id == discord_user.id:
                         emp.shift_report.shifts = shift_list
 
-    async def send_report(self, channel: Optional[discord.TextChannel] = None, interaction: Optional[discord.Interaction] = None, mobile: bool = True) -> None:
+    async def send_report(self, channel: Optional[discord.TextChannel] = None,
+                          interaction: Optional[discord.Interaction] = None, mobile: bool = True) -> None:
         original_desc = ''.join(self.summaries_as_list(mobile=mobile))
         full_message = f"## {self.title}\n{original_desc}\n{self.footer}"
         if mobile:
@@ -373,24 +387,43 @@ class Report():
                     await paginator.send(interaction)
                 if channel:
                     for index, chunk in enumerate(chunks):
-                        embed = discord.Embed(color=self.color, title=f'{self.title} (Page {index + 1})', description=chunk)
+                        embed = discord.Embed(color=self.color, title=f'{self.title} (Page {index + 1})',
+                                              description=chunk)
                         await channel.send(embed=chunk)
 
+    async def send_report_plot(self, channel: Optional[discord.TextChannel] = None,
+                               interaction: Optional[discord.Interaction] = None) -> None:
+        sup_names = [user.name for user in self.users]
+        scores = [user.total_score for user in self.users]
 
+        plt.figure(figsize=(10, 6))
+        plt.bar(sup_names, scores, color='skyblue')
 
+        plt.xlabel('Supervisor Name')
+        plt.ylabel('Score')
+        plt.title('Scores for each Supervisor')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+
+        # Display the chart
+        plt.savefig('temp/plot.png')
+        if interaction:
+            await interaction.response.send_message(file=discord.File('temp/plot.png') ,ephemeral=True)
+        if channel:
+            await channel.send(file=discord.File('temp/plot.png'))
 
     def sort_users(self):
         # Sorts by total score (descending) then number of shifts (ascending)
-        self.users.sort(key = lambda user: (user.total_score, -user.shift_report.num_of_shifts), reverse=True)
+        self.users.sort(key=lambda user: (user.total_score, -user.shift_report.num_of_shifts), reverse=True)
 
     @property
     def users_in_compliance(self) -> List[ReportStats]:
         return [user for user in self.users if user.in_compliance]
-    
+
     @property
     def users_not_in_compliance(self) -> List[ReportStats]:
         return [user for user in self.users if not user.in_compliance]
-        
+
     def chunk_summaries(self, max_chunk_size: int, max_chunks: int, mobile: bool = False) -> List[str]:
         chunks: List[str] = []
         cur_chunk = ''
@@ -405,21 +438,27 @@ class Report():
                 chunks.append(cur_chunk)
                 cur_chunk = summary
         chunks.append(cur_chunk)
-        return [f"## {self.title} (Page {index + 1})\n{chunk}\n{self.footer}" for index, chunk in enumerate(chunks)] if mobile else chunks
-       
+        return [f"## {self.title} (Page {index + 1})\n{chunk}\n{self.footer}" for index, chunk in
+                enumerate(chunks)] if mobile else chunks
+
     def summaries_as_list(self, mobile: bool = False) -> List[str]:
-        summaries = [user.mobile_summary for user in self.users_in_compliance] if mobile else [user.summary for user in self.users_in_compliance]
+        summaries = [user.mobile_summary for user in self.users_in_compliance] if mobile else [user.summary for user in
+                                                                                               self.users_in_compliance]
         summaries.extend([] if mobile else ['**--------------------**\n'])
-        summaries.extend([user.mobile_summary for user in self.users_not_in_compliance] if mobile else [user.summary for user in self.users_not_in_compliance])
+        summaries.extend(
+            [user.mobile_summary for user in self.users_not_in_compliance] if mobile else [user.summary for user in
+                                                                                           self.users_not_in_compliance])
         return summaries
-        
+
+
 class ReportPaginator(discord.ui.View):
     def __init__(self, title: str, footer: str, chunks: List[str], mobile: bool = True):
         super().__init__()
         self.title = title
         self.footer = footer
         self.chunks = chunks
-        self.embeds = None if mobile else [discord.Embed(title=f'{self.title} (Page {index + 1})', description=chunk) for index, chunk in enumerate(chunks)]
+        self.embeds = None if mobile else [discord.Embed(title=f'{self.title} (Page {index + 1})', description=chunk)
+                                           for index, chunk in enumerate(chunks)]
         if self.embeds:
             for embed in self.embeds:
                 embed.set_footer(text=footer)
@@ -436,7 +475,7 @@ class ReportPaginator(discord.ui.View):
             self.left.disabled = True
         if self.index == len(self.chunks) - 1:
             self.right.disabled = True
-    
+
     async def update_message(self, interaction: discord.Interaction):
         self.update_buttons()
         if self.embeds:
@@ -448,23 +487,23 @@ class ReportPaginator(discord.ui.View):
     async def left(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         self.index = max(self.index - 1, 0)
-        await self.update_message(interaction) 
+        await self.update_message(interaction)
 
     @discord.ui.button(label=">", style=discord.ButtonStyle.blurple)
     async def right(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         self.index = min(self.index + 1, len(self.chunks) - 1)
-        await self.update_message(interaction)        
-        
-        
+        await self.update_message(interaction)
+
 
 class SupervisorReport(Report):
     def __init__(self, report_type: ReportType, report_dt: datetime.datetime, **kwargs):
         self.supervisors: List[SupervisorReportStats] = []
-        super().__init__(users=self.supervisors, position_type=PositionType.SUPERVISOR, report_type=report_type, report_dt=report_dt, **kwargs)
+        super().__init__(users=self.supervisors, position_type=PositionType.SUPERVISOR, report_type=report_type,
+                         report_dt=report_dt, **kwargs)
 
     def run_report(self, branch: Branch, run_by: discord.User, include_vats: bool = False, include_chems: bool = False,
-            include_scan_auds: bool = False, include_in_servs: bool = False) -> None:
+                   include_scan_auds: bool = False, include_in_servs: bool = False) -> None:
         super().run_report(
             branch,
             run_by,
@@ -478,10 +517,10 @@ class SupervisorReport(Report):
             self.chem_report(branch)
         if include_scan_auds:
             pass
-            #TODO
+            # TODO
         if include_in_servs:
             pass
-            #TODO
+            # TODO
         self.sort_users()
 
     def vat_report(self, branch: Branch) -> None:
@@ -504,13 +543,16 @@ class SupervisorReport(Report):
                 if sup.shift_report.during_shifts(chem.time):
                     sup.chems.items.append(chem)
 
+
 class GuardReport(Report):
     def __init__(self, report_type: ReportType, report_dt: datetime.datetime, **kwargs):
         self.guards: List[GuardReportStats] = []
-        super().__init__(users=self.guards, position_type=PositionType.LIFEGUARD, report_type=report_type, report_dt=report_dt, **kwargs)
+        super().__init__(users=self.guards, position_type=PositionType.LIFEGUARD, report_type=report_type,
+                         report_dt=report_dt, **kwargs)
 
-    def run_report(self, branch: Branch, run_by: discord.User, include_vats: bool = False, include_scan_auds: bool = False,
-            include_in_servs: bool = False) -> None:
+    def run_report(self, branch: Branch, run_by: discord.User, include_vats: bool = False,
+                   include_scan_auds: bool = False,
+                   include_in_servs: bool = False) -> None:
         super().run_report(
             branch,
             run_by,
@@ -521,10 +563,10 @@ class GuardReport(Report):
             self.vat_report(branch)
         if include_scan_auds:
             pass
-            #TODO
+            # TODO
         if include_in_servs:
             pass
-            #TODO
+            # TODO
         self.sort_users()
 
     def vat_report(self, branch: Branch) -> None:

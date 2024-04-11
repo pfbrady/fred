@@ -18,4 +18,3 @@ class YMCADatabaseCase(TestCase):
         last_chem = self.database.select_last_chem(self.test_branch, self.test_pool)
         print(last_chem)
         self.assertIsNotNone(last_chem)
-

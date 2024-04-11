@@ -1,24 +1,30 @@
+"""sa.py module"""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
-import logging
-from typing import TYPE_CHECKING, Optional, Dict
-import fred.database_helper as dbh
 import datetime
+from dataclasses import dataclass
+from enum import Enum
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .branch import Branch
+    from typing import Optional
 
-from enum import Enum
 
 class Evaluation(Enum):
+    """
+    Enum subclass that associates each "grade" for a Scanning Audit criteria;
+    for use in compliance calculations.
+    """
     EXCEED = 3
     MEET = 2
     FAIL = 1
     NA = 3
 
+
 @dataclass
-class ScanningAudit():
+class ScanningAudit:
+    """A representation of a Formstack Scanning Audit Submission."""
     sa_uuid: int
     guard_discord_id: Optional[int] = None
     guard_name: str = ''
