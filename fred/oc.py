@@ -2,17 +2,18 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-from dataclasses import dataclass
 import datetime
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
 import fred.database_helper as dbh
 
 if TYPE_CHECKING:
-    from typing import Dict, Optional, Tuple
+    from typing import Dict, Optional, Tuple, Union
     from .branch import Branch
 
 
-def get_regulatory_key_from_rss_keys(keys: list) -> str:
+def get_regulatory_key_from_rss_keys(keys: dict) -> str:
     """
     A helper function that gets the key corresponding to the regulatory
     information for a specific pool at a specific branch.
@@ -28,6 +29,7 @@ def get_regulatory_key_from_rss_keys(keys: list) -> str:
         if 'Regulatory' in key:
             return key
     return ''
+
 
 def get_cl_key_from_rss_keys(keys: list) -> str:
     """
@@ -46,6 +48,7 @@ def get_cl_key_from_rss_keys(keys: list) -> str:
             return key
     return ''
 
+
 def get_ph_key_from_rss_keys(keys: list) -> str:
     """
     A helper function that gets the key corresponding to the ph reading for a
@@ -62,6 +65,7 @@ def get_ph_key_from_rss_keys(keys: list) -> str:
         if 'PH reading' in key:
             return key
     return ''
+
 
 def get_water_temp_from_rss_keys(keys: list) -> str:
     """
@@ -80,27 +84,30 @@ def get_water_temp_from_rss_keys(keys: list) -> str:
             return key
     return ''
 
+
 def handle_water_temp(wt_str: str) -> int:
     """
-    A helper function that gets the key corresponding to the chlorine reading
-    for a specific pool at a specific branch.
-
-    Args:
-        keys (list): The keys of a Formstack Opening/Closing Checklist RSS
-        entry.
-
-    Returns:
-        str: The chlorine key
-    """
-    return int(wt_str.split(' ')[0]) if '8' in wt_str else 83
-
-def handle_cl(cl_str: str) -> float:
-    """
-    A helper function that extracts the clhorine reading from the formatted
+    A helper function that extracts the water temperature from the formatted
     Formstack string.
 
     Args:
-        cl_string (str): Answer to the 'What is the _________ CL reading' 
+        wt_str (str): Answer to the 'What is the opening water temperature
+        (Outdoor Complex Activity Pool)?*' question on the Formstack
+        Opening/Closing Checklist Form.
+
+    Returns:
+        int: The temperature of the water.
+    """
+    return int(wt_str.split(' ')[0]) if '8' in wt_str else 83
+
+
+def handle_cl(cl_str: str) -> float:
+    """
+    A helper function that extracts the chlorine reading from the formatted
+    Formstack string.
+
+    Args:
+        cl_str (str): Answer to the 'What is the _________ CL reading'
         question on the Formstack Opening/Closing Checklist Form.
 
     Returns:
@@ -113,13 +120,14 @@ def handle_cl(cl_str: str) -> float:
     elif cl_str == '5.0 or above':
         return 7.5
 
-def handle_ph(ph_str: str) -> int:
+
+def handle_ph(ph_str: str) -> float:
     """
     A helper function that extracts the ph reading from the formatted
     Formstack string.
 
     Args:
-        ph_string (str): Answer to the 'What is the _________ pH reading' 
+        ph_str (str): Answer to the 'What is the _________ pH reading'
         question on the Formstack Opening/Closing Checklist Form.
 
     Returns:
@@ -134,6 +142,7 @@ def handle_ph(ph_str: str) -> int:
     else:
         return 7.5
 
+
 def handle_vacuum_closing(entry: Dict[str, str]) -> bool:
     """
     A helper function that determines if the vacuum is operating properly.
@@ -147,15 +156,16 @@ def handle_vacuum_closing(entry: Dict[str, str]) -> bool:
     if entry.get('Does your supervisor expect you to place a robotic vacuum'
                  'into the pool?', '') == 'Yes':
         if entry.get(
-            'Have you placed the robotic vacuum in the pool?', '') == 'Yes':
+                'Have you placed the robotic vacuum in the pool?', '') == 'Yes':
             if entry.get('Before leaving the Y, do you see the vacuum moving'
                          'across the pool bottom as expected?', '') == 'Yes':
                 return True
     else:
         return False
 
+
 @dataclass
-class OpeningChecklist():
+class OpeningChecklist:
     """A representation of a Formstack Opening Checklist Submission."""
     oc_uuid: int
     discord_id: Optional[int] = None
@@ -218,7 +228,7 @@ class OpeningChecklist():
             cls,
             branch: Branch,
             entry: Dict[str, str]
-        ) -> OpeningChecklist:
+    ) -> OpeningChecklist:
         """
         Factory method that initializes an instance of OpeningChecklist from the
         Formstack RSS Feed.
@@ -288,7 +298,7 @@ class OpeningChecklist():
         """
         if not any(db_tup):
             return cls(0)
-        oc_uuid = db_tup[0]
+        oc_uuid = int(db_tup[0])
         discord_id = int(db_tup[1]) if db_tup[1] else None
         name = db_tup[2]
         branch_id = db_tup[3]
@@ -325,10 +335,11 @@ class OpeningChecklist():
                    spare_battery_present, vacuum_present)
 
     def __bool__(self):
-        return self.oc_uuid != 0 or self.oc_uuid is not None
+        return self.oc_uuid != 0
+
 
 @dataclass
-class ClosingChecklist():
+class ClosingChecklist:
     """A representation of a Formstack Closing Checklist Submission."""
     oc_uuid: int
     discord_id: Optional[int] = None
@@ -348,7 +359,7 @@ class ClosingChecklist():
     def from_rss_entry(
             cls,
             branch: Branch,
-            entry: Dict[str, str]) -> OpeningChecklist:
+            entry: Dict[str, Union[str, int, datetime.datetime]]) -> ClosingChecklist:
         """
         Factory method that initializes an instance of ClosingChecklist from the
         Formstack RSS Feed.
@@ -384,7 +395,7 @@ class ClosingChecklist():
                    lights_function, vacuum_function)
 
     @classmethod
-    def from_database(cls, db_tup: Tuple[str]) -> OpeningChecklist:
+    def from_database(cls, db_tup: Tuple[str]) -> ClosingChecklist:
         """
         Factory method that initializes an instance of ClosingChecklist from a
         connected SQLite Database.
@@ -398,7 +409,7 @@ class ClosingChecklist():
         """
         if not any(db_tup):
             return cls(0)
-        oc_uuid = db_tup[0]
+        oc_uuid = int(db_tup[0])
         discord_id = int(db_tup[1]) if db_tup[1] else None
         name = db_tup[2]
         branch_id = db_tup[3]
@@ -416,5 +427,4 @@ class ClosingChecklist():
                    lights_function, vacuum_function)
 
     def __bool__(self):
-        return self.oc_uuid != 0 or self.oc_uuid is not None
-        
+        return self.oc_uuid != 0

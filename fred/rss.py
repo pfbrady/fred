@@ -1,12 +1,16 @@
 """rss.py module"""
 
-from typing import TYPE_CHECKING, Dict
+from __future__ import annotations
+
 import datetime
 from html.parser import HTMLParser
+from typing import TYPE_CHECKING
+
 import feedparser
 
 if TYPE_CHECKING:
-    from typing import List
+    from typing import List, Union, Dict
+
 
 class FormstackHTMLParser(HTMLParser):
     """
@@ -14,6 +18,7 @@ class FormstackHTMLParser(HTMLParser):
 
     Inherits from HTMLParser
     """
+
     def __init__(self):
         HTMLParser.__init__(self)
         self.form_dict = {}
@@ -41,9 +46,10 @@ class FormstackHTMLParser(HTMLParser):
         elif self.value_flag:
             self.form_dict[self.last_key] = data.strip()
 
-def form_rss_to_dict(link: str) -> Dict[str, str]:
-    fp: List[feedparser.FeedParserDict] = feedparser.parse(link)
-    parsed_entries: List[dict] = []
+
+def form_rss_to_dict(link: str) -> List[Dict[str, Union[str, int, datetime]]]:
+    fp: feedparser.FeedParserDict = feedparser.parse(link)
+    parsed_entries: List[Dict[str, Union[str, int, datetime]]] = []
     for entry in fp.entries:
         form_parser = FormstackHTMLParser()
         form_parser.feed(entry.content[0].value)

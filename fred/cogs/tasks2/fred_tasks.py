@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 import datetime
+from typing import TYPE_CHECKING
+
 import pytz
 from discord.ext import commands, tasks
+
 from fred.dashboard import SupervisorReport, ReportType
 
 if TYPE_CHECKING:
@@ -16,7 +18,7 @@ if TYPE_CHECKING:
 
 
 # from itertools import cycle
-#status = cycle(['status 1', 'status 2', 'status 3'])
+# status = cycle(['status 1', 'status 2', 'status 3'])
 
 
 class FredTasks(commands.Cog):
@@ -25,6 +27,7 @@ class FredTasks(commands.Cog):
 
     Inherits from discord.ext.commands.Cog
     """
+
     def __init__(self, fred):
         self.fred: Fred = fred
         self.tasks = [
@@ -39,7 +42,7 @@ class FredTasks(commands.Cog):
         for task in self.tasks:
             task.cancel()
 
-    async def check_form_adherance(
+    async def check_form_adherence(
             self,
             branch: Branch,
             pool_group: PoolGroup,
@@ -56,7 +59,7 @@ class FredTasks(commands.Cog):
             branch (Branch): The YMCA of DE Branch to check.
             pool_group (PoolGroup): The branch's group of pools to check.
             pool (Pool): The pool group's specific pool to check.
-            channel (TextChannel): The channel to send a message in. Typically
+            channel (TextChannel): The channel to send a message in. Typically,
             'fred-lg-notifs'.
         """
         last_chem = self.fred.ymca.database.select_last_chem(
@@ -76,14 +79,14 @@ class FredTasks(commands.Cog):
             w2w_employees
         )
         if (last_chem
-            and now > last_chem.time + datetime.timedelta(hours=2, minutes=30)
-            and now > pool.opening_time + datetime.timedelta(hours=2, minutes=30)
-            and now < pool.closing_time - datetime.timedelta(minutes=30)
+                and now > last_chem.time + datetime.timedelta(hours=2, minutes=30)
+                and now > pool.opening_time + datetime.timedelta(hours=2, minutes=30)
+                and now < pool.closing_time - datetime.timedelta(minutes=30)
         ):
             await channel.send(
                 f"Notification: {' '.join([user.mention for user in discord_users])}"
                 f" Please submit a chemical check for the {pool.name}."
-                )
+            )
         last_opening = None
         for checklist in pool.checklists:
             lo_candidate = self.fred.ymca.database.select_last_opening(
@@ -96,9 +99,9 @@ class FredTasks(commands.Cog):
                 elif lo_candidate.time < last_opening.time:
                     last_opening = lo_candidate
         if (last_opening
-            and now > last_opening.time + datetime.timedelta(hours=16)
-            and now > pool.opening_time + datetime.timedelta(hours=1, minutes=30)
-            and now < pool.closing_time - datetime.timedelta(minutes=30)
+                and now > last_opening.time + datetime.timedelta(hours=16)
+                and now > pool.opening_time + datetime.timedelta(hours=1, minutes=30)
+                and now < pool.closing_time - datetime.timedelta(minutes=30)
         ):
             await channel.send(
                 f"Notification: {' '.join([user.mention for user in discord_users])}"
@@ -108,7 +111,7 @@ class FredTasks(commands.Cog):
     @tasks.loop(minutes=30)
     async def update_tables(self):
         """
-        discord.py task that loops through all of the branches every 30
+        discord.py task that loops through all the branches every 30
         minutes, and for each pool that is currently open, 
         """
         for branch in self.fred.ymca.branches.values():
@@ -118,7 +121,7 @@ class FredTasks(commands.Cog):
                     if pool.is_open and branch.guild:
                         for channel in branch.guild.text_channels:
                             if channel.name == 'fred-lg-notif':
-                                await self.check_form_adherance(
+                                await self.check_form_adherence(
                                     branch,
                                     pool_group,
                                     pool,
@@ -176,7 +179,7 @@ class FredTasks(commands.Cog):
         """
         discord.py task that loops through each branch every day at 12:15 AM
         and updates each pool's open and close times, as well as if the pool
-        if open.
+        is open.
         """
         for branch in self.fred.ymca.branches.values():
             branch.update_pool_groups()
@@ -186,7 +189,7 @@ class FredTasks(commands.Cog):
                         await channel.send(
                             "Updating opening/closing times for each pool at "
                             f"{branch.name} Branch."
-                            )
+                        )
 
     @check_pool_extreme_times.before_loop
     async def before_check_pool_extreme_times(self):
@@ -195,6 +198,7 @@ class FredTasks(commands.Cog):
         for the first time.
         """
         await self.fred.wait_until_ready()
+
 
 async def setup(fred: Fred):
     """

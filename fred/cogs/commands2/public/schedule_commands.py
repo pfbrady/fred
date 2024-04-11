@@ -1,10 +1,12 @@
-"""schedule_comands module"""
+"""schedule_commands module"""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 import datetime
+from typing import TYPE_CHECKING
+
 import discord
+
 from fred.cogs.commands2.command_helper import platform_auto
 
 if TYPE_CHECKING:
@@ -16,16 +18,17 @@ if TYPE_CHECKING:
 class ScheduleCommands(discord.app_commands.Group):
     """
     Discord Cog for fetching WhenToWork or Daxko current schedules for FRED,
-    for use by @everyone. Purposfully concise.
+    for use by @everyone. Purposefully concise.
 
     Inherits from discord.app_commands.Group
     """
+
     def __init__(self, name, description, fred: Fred):
         super().__init__(name=name, description=description)
         self.fred: Fred = fred
 
     async def w2w_pos_auto(self, interaction: discord.Interaction, current: str
-    )-> List[discord.app_commands.Choice[str]]:
+                           ) -> List[discord.app_commands.Choice[str]]:
         """
 
         Args:
@@ -63,7 +66,7 @@ class ScheduleCommands(discord.app_commands.Group):
         """
         int_w2w_client = int_branch.w2w_client
         positions: List[Position] = []
-        if position_auto in ('guard' , 'all'):
+        if position_auto in ('guard', 'all'):
             for pos in int_w2w_client.lifeguard_positions:
                 positions.append(pos)
         if position_auto in ('swim-instructor', 'all'):
@@ -82,11 +85,11 @@ class ScheduleCommands(discord.app_commands.Group):
     )
     @discord.app_commands.describe(
         position="Type of positions you would like to see. Leadership "
-        "(Specialists and Supervisors) added automatically."
+                 "(Specialists and Supervisors) added automatically."
     )
     @discord.app_commands.describe(
         platform="The platform you are on. 'mobile' correctly resolves mentions"
-        "and displays a shorter message on mobile.")
+                 "and displays a shorter message on mobile.")
     @discord.app_commands.autocomplete(
         position=w2w_pos_auto, platform=platform_auto)
     async def w2w(
@@ -114,7 +117,7 @@ class ScheduleCommands(discord.app_commands.Group):
             content = self.format_employees(
                 int_branch, w2w_shifts_by_pos, position, mobile)
             title = ("Current Schedule on WhenToWork (Positions: "
-                f"{position.capitalize().replace('-', ' ')})")
+                     f"{position.capitalize().replace('-', ' ')})")
             embed = discord.Embed(title=title, description=content)
             await interaction.response.send_message(embed=embed, ephemeral=True)
         else:
@@ -122,7 +125,7 @@ class ScheduleCommands(discord.app_commands.Group):
                 "No employees for that position are currently working."
                 "Please adjust your parameters.",
                 ephemeral=True)
-            
+
     def format_employees(
             self,
             int_branch: Branch,
@@ -136,21 +139,20 @@ class ScheduleCommands(discord.app_commands.Group):
                 for shift in shifts:
                     w2w_guard_name = f'{shift.employee.first_name} {shift.employee.last_name}' if shift.employee else None
                     w2w_shift_time = (f"{shift.start_datetime.strftime('%I:%M%p')}-"
-                        f"{shift.end_datetime.strftime('%I:%M%p')}")
+                                      f"{shift.end_datetime.strftime('%I:%M%p')}")
                     content += f'{w2w_guard_name}, {w2w_shift_time}\n'
             return content[:2000]
         content = ''
         for pos, shifts in w2w_shifts_by_pos.items():
             content += f'**{pos.position_name}**\n'
             for shift in shifts:
-                discord_user = self.fred.ymca.database.select_discord_user(int_branch, shift.employee) if shift.employee else None
+                discord_user = self.fred.ymca.database.select_discord_user(int_branch,
+                                                                           shift.employee) if shift.employee else None
                 mention = discord_user.mention if discord_user else discord_user
                 w2w_shift_time = (f"{shift.start_datetime.strftime('%I:%M%p')}-"
-                    f"{shift.end_datetime.strftime('%I:%M%p')}")
+                                  f"{shift.end_datetime.strftime('%I:%M%p')}")
                 content += f'{mention}, {w2w_shift_time}\n'
         return content[:4096]
-
-
 
 
 async def setup(fred: Fred):
@@ -164,7 +166,6 @@ async def setup(fred: Fred):
     fred.tree.add_command(ScheduleCommands(
         name="schedule",
         description="Commands for fetching schedule-related information"
-        "from W2W and the YMCA of DE website.",
+                    "from W2W and the YMCA of DE website.",
         fred=fred)
     )
-

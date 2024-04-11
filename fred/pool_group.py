@@ -2,20 +2,23 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 import datetime
-from fred import Pool
+from typing import TYPE_CHECKING
+
+from fred.pool import Pool
 
 if TYPE_CHECKING:
     from typing import List, Union
     from whentowork import Position, Shift
 
-class PoolGroup():
+
+class PoolGroup:
     """
     A collection of pools, grouped based on WhenToWork positions for the
     lifeguards. For example, if a lifeguard's W2W position includes two pools,
     then the PoolGroup will contain those two pools.
     """
+
     def __init__(self, branch_id: str, pool_group_id: str, pool_group: dict):
         self.pool_group_id: str = pool_group_id
         self.branch_id: str = branch_id

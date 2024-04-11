@@ -5,7 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import List, TypedDict
+    from typing import TypedDict, Dict
+
 
 class YMCAW2WClientPayload(TypedDict):
     """
@@ -17,4 +18,4 @@ class YMCAW2WClientPayload(TypedDict):
     swim_instructor: int
     private_swim_instructor: int
     swam: int
-    lifeguards: List[int]
+    lifeguard: Dict[str, int]

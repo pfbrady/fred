@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-from dataclasses import dataclass
 import datetime
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
 import fred.database_helper as dbh
 
 if TYPE_CHECKING:
@@ -19,7 +20,7 @@ def handle_depth(depth_string: str) -> float:
 
     Args:
         depth_string (str): Answer to the 'What was the water depth where the
-        stimuli was placed?' questionnon the Formstack VAT Form.
+        stimuli was placed?' question on the Formstack VAT Form.
 
     Returns:
         float: The depth of the VAT stimuli.
@@ -31,6 +32,7 @@ def handle_depth(depth_string: str) -> float:
     depth_list = depth_string.split(' ')
     depth_list = depth_list[0].split('-')
     return (float(depth_list[0]) + float(depth_list[1])) / 2
+
 
 def handle_response_time(pass_string: str):
     """
@@ -51,8 +53,9 @@ def handle_response_time(pass_string: str):
         return (float(pass_list[1][1:]) + float(pass_list[3])) / 2
     return 60.0
 
+
 @dataclass
-class VAT():
+class VAT:
     """A representation of a Formstack VAT Submission."""
     vat_uuid: int
     guard_discord_id: Optional[int] = None
@@ -112,7 +115,7 @@ class VAT():
         else:
             time = dbh.handle_fs_rss_datetime(
                 f"{row['Date of Vigilance Test Conducted']}"
-                f"{ row['Time of Vigilance Test Conducted ']}")
+                f"{row['Time of Vigilance Test Conducted ']}")
         submit_time = dbh.handle_fs_csv_datetime(row['Time'])
         num_of_swimmers = dbh.handle_num_of_guests(
             row['How many guests do you believe were in the pool?'])

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
 import datetime
+from typing import TYPE_CHECKING
+
 import fred.daxko as daxko
 
 if TYPE_CHECKING:
@@ -26,4 +27,3 @@ class Pool(object):
 
     def update_is_open(self):
         self.is_open = True if self.name in daxko.get_open_pools() else False
-         

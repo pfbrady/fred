@@ -2,29 +2,28 @@
 
 from __future__ import annotations
 
-from enum import Enum
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
 import datetime
+from dataclasses import dataclass
+from enum import Enum
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Optional, Dict
+    from typing import Optional
+
 
 class Evaluation(Enum):
     """
     Enum subclass that associates each "grade" for a Scanning Audit criteria;
     for use in compliance calculations.
-
-    Args:
-        Enum (_type_): _description_
     """
     EXCEED = 3
     MEET = 2
     FAIL = 1
     NA = 3
 
+
 @dataclass
-class ScanningAudit():
+class ScanningAudit:
     """A representation of a Formstack Scanning Audit Submission."""
     sa_uuid: int
     guard_discord_id: Optional[int] = None

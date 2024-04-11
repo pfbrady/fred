@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import datetime
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-import datetime
+
 import fred.database_helper as dbh
 
 if TYPE_CHECKING:
-    from typing import Dict, List, Tuple, Optional
+    from typing import Dict, Tuple, Optional, KeysView
     from .branch import Branch
 
-def match_sample_location_key(keys: List[str]) -> str:
+
+def match_sample_location_key(keys: KeysView[str, str]) -> str:
     """
     A helper function that gets the key corresponding to the sample location
     for a specific pool at a specific branch.
@@ -27,9 +29,10 @@ def match_sample_location_key(keys: List[str]) -> str:
             return key
     return ''
 
+
 def handle_water_temp(wt_str: str) -> float:
     """
-    A helper function that extracts the water temperature taken duing a Chemical
+    A helper function that extracts the water temperature taken during a Chemical
     Check from the Formstack string.
 
     Args:
@@ -41,8 +44,9 @@ def handle_water_temp(wt_str: str) -> float:
     """
     return wt_str[:2] if 'degrees' in wt_str else 83
 
+
 @dataclass
-class ChemCheck():
+class ChemCheck:
     """A representation of a Formstack Chemical Check Submission."""
     chem_uuid: int
     chlorine: float
@@ -54,7 +58,7 @@ class ChemCheck():
     sample_location: str = ''
     time: Optional[datetime.datetime] = None
     submit_time: Optional[datetime.datetime] = None
-    water_temp: str = ''
+    water_temp: float = 0.0
     num_of_swimmers: int = 0
 
     @property
