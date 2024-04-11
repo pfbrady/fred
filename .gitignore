@@ -68,7 +68,7 @@ config.json
 *.db*
 
 # Pycharm stuff
-*.idea
+.idea
 
 # Django stuff:
 *.log
