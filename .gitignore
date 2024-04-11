@@ -70,6 +70,9 @@ config.json
 # Pycharm stuff
 .idea
 
+# Plots
+plot.png
+
 # Django stuff:
 *.log
 local_settings.py
